@@ -103,7 +103,10 @@ def make_processes(
             s="{}x{}".format(new_width, new_height),
         )
         .filter("fps", fps=fps, round="up")
-        .output(out_filename)
+        .output(
+            out_filename,
+            preset="ultrafast",
+        )
         .overwrite_output()
         .run_async(pipe_stdin=True)
     )
@@ -116,7 +119,10 @@ def make_processes(
                 s="{}x{}".format(width, height),
             )
             .filter("fps", fps=fps, round="up")
-            .output(out_filename_wrap)
+            .output(
+                out_filename_wrap,
+                preset="ultrafast",
+            )
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
@@ -129,7 +135,10 @@ def make_processes(
                 s="{}x{}".format(new_width + add_width, new_height + add_height),
             )
             .filter("fps", fps=fps, round="up")
-            .output(out_filename_both)
+            .output(
+                out_filename_both,
+                preset="ultrafast",
+            )
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
@@ -145,7 +154,10 @@ def make_processes(
                 ),
             )
             .filter("fps", fps=fps, round="up")
-            .output(out_filename_mask)
+            .output(
+                out_filename_mask,
+                preset="ultrafast",
+            )
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
@@ -158,7 +170,10 @@ def make_processes(
                 s="{}x{}".format(coef_v * new_width, coef_h * new_height),
             )
             .filter("fps", fps=fps, round="up")
-            .output(out_premiere_filename)
+            .output(
+                out_premiere_filename,
+                preset="ultrafast",
+            )
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
@@ -174,7 +189,10 @@ def make_processes(
                 ),
             )
             .filter("fps", fps=fps, round="up")
-            .output(out_premiere_mask_filename)
+            .output(
+                out_premiere_mask_filename,
+                preset="ultrafast",
+            )
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
