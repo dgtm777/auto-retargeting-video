@@ -1,0 +1,5 @@
+videos/
+model/
+__pycache__/
+scene.mp4
+encoded.mkv
