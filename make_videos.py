@@ -36,9 +36,9 @@ def make_videos(
     out_filename_wrap=None,
     out_filename_both=None,
     out_filename_mask=None,
-    in_premiere_filename=None,
-    out_premiere_filename=None,
-    out_premiere_mask_filename=None,
+    in_compare_filename=None,
+    out_compare_filename=None,
+    out_compare_mask_filename=None,
     constant_speed=None,
     scene_detection_flag=True,
 ):
@@ -49,10 +49,10 @@ def make_videos(
     (
         yuv_video,
         input_video,
-        input_premiere_video,
+        input_compare_video,
         video_vector,
         scene_detection_video,
-    ) = upload_videos(in_filename, in_premiere_filename)
+    ) = upload_videos(in_filename, in_compare_filename)
 
     # vert
     # crop_size = (12, 8)
@@ -102,8 +102,8 @@ def make_videos(
         out_filename_wrap,
         out_filename_both,
         out_filename_mask,
-        out_premiere_filename,
-        out_premiere_mask_filename,
+        out_compare_filename,
+        out_compare_mask_filename,
     )
 
     make_mask_time = 0
@@ -111,10 +111,10 @@ def make_videos(
     processes_time = 0
     whole_time = datetime.now()
     it = 0
-    for cur_moving_vector, cur_image, cur_premiere_image, cur_scene in zip(
+    for cur_moving_vector, cur_image, cur_compare_image, cur_scene in zip(
         speed_video.frames(),
         input_video.frames(),
-        input_premiere_video.frames(),
+        input_compare_video.frames(),
         scene_detection_video.frames(),
     ):
         image = frame_to_numpy(cur_image)
@@ -145,15 +145,15 @@ def make_videos(
         set_processes(
             img,
             mask,
-            cur_premiere_image,
+            cur_compare_image,
             func,
             processes,
             out_filename,
             out_filename_wrap,
             out_filename_both,
             out_filename_mask,
-            out_premiere_filename,
-            out_premiere_mask_filename,
+            out_compare_filename,
+            out_compare_mask_filename,
         )
         processes_time += (datetime.now() - start_processes_time).microseconds
 

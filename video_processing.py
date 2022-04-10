@@ -38,7 +38,7 @@ def upload_videos(in_filename, in_compare_filename):
             matrix_in_s="709",
         )
         input_compare_video = avs_subtitle(
-            input_compare_video, in_compare_filename.split("/")[-1]
+            input_compare_video, in_compare_filename.split("/")[-2]
         )
     else:
         input_compare_video = input_video

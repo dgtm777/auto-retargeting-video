@@ -84,7 +84,7 @@ if __name__ == "__main__":
         make_videos(
             os.path.join(root_dir, "videos/" + in_filename + ".mp4"),
             os.path.join(root_dir, "videos/" + in_filename + "_cur.mp4"),
-            in_premiere_filename=os.path.join(
+            in_compare_filename=os.path.join(
                 root_dir, "videos/premiere/" + in_filename + ".mp4"
             ),
             out_filename_wrap=os.path.join(
@@ -96,10 +96,10 @@ if __name__ == "__main__":
             out_filename_mask=os.path.join(
                 root_dir, "videos/" + in_filename + "_mask.mp4"
             ),
-            out_premiere_filename=os.path.join(
+            out_compare_filename=os.path.join(
                 root_dir, "videos/" + in_filename + "_premiere.mp4"
             ),
-            out_premiere_mask_filename=os.path.join(
+            out_compare_mask_filename=os.path.join(
                 root_dir, "videos/" + in_filename + "_premiere_mask.mp4"
             ),
         )
