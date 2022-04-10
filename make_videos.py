@@ -40,14 +40,19 @@ def make_videos(
     out_premiere_filename=None,
     out_premiere_mask_filename=None,
     constant_speed=None,
+    scene_detection_flag=True,
 ):
     crop_functions.l_prev = None
     crop_functions.r_prev = None
     crop_functions.speed_upgrade = 0
 
-    yuv_video, input_video, input_premiere_video, video_vector = upload_videos(
-        in_filename, in_premiere_filename
-    )
+    (
+        yuv_video,
+        input_video,
+        input_premiere_video,
+        video_vector,
+        scene_detection_video,
+    ) = upload_videos(in_filename, in_premiere_filename)
 
     # vert
     # crop_size = (12, 8)
@@ -106,8 +111,11 @@ def make_videos(
     processes_time = 0
     whole_time = datetime.now()
     it = 0
-    for cur_moving_vector, cur_image, cur_premiere_image in zip(
-        speed_video.frames(), input_video.frames(), input_premiere_video.frames()
+    for cur_moving_vector, cur_image, cur_premiere_image, cur_scene in zip(
+        speed_video.frames(),
+        input_video.frames(),
+        input_premiere_video.frames(),
+        scene_detection_video.frames(),
     ):
         image = frame_to_numpy(cur_image)
         make_mask_start_time = datetime.now()
@@ -126,6 +134,8 @@ def make_videos(
             (new_height, new_width),
             image_mask,
             np_moving_vector,
+            cur_scene.props["_SceneChangePrev"] and scene_detection_flag,
+            constant_speed,
         )
         crop_function_time += (datetime.now() - start_crop_time).seconds * 10**6 + (
             datetime.now() - start_crop_time

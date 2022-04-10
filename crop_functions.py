@@ -12,7 +12,7 @@ speed_upgrade = 0
 speed_prev = None
 
 
-def check_border(crop_size, mask, scale, vect, constant_speed=None):
+def check_border(crop_size, mask, scale, vect, scene_change_flag, constant_speed=None):
     global l_prev, r_prev, speed_upgrade, speed_prev
     compress_arr = np.sum(mask**5, 1)
     prefix_sum = np.insert(np.cumsum(compress_arr), 0, 0)
@@ -47,17 +47,21 @@ def check_border(crop_size, mask, scale, vect, constant_speed=None):
         speed_prev = speed_upgrade
     else:
         speed_upgrade = constant_speed
-    if l_prev is None or (
-        # abs(l_new - l_prev) >= len(mask) / scale * 0.25
-        abs(l_new - l_prev) > 2 / 3 * (r_new - l_new)
-        and abs(
-            (
-                prefix_sum[int((r_new - general_sign * 1 / scale) * scale)]
-                - prefix_sum[int((l_new - general_sign * 1 / scale) * scale)]
+    if (
+        l_prev is None
+        or scene_change_flag == 1
+        or (
+            # abs(l_new - l_prev) >= len(mask) / scale * 0.25
+            abs(l_new - l_prev) > 2 / 3 * (r_new - l_new)
+            and abs(
+                (
+                    prefix_sum[int((r_new - general_sign * 1 / scale) * scale)]
+                    - prefix_sum[int((l_new - general_sign * 1 / scale) * scale)]
+                )
+                - (prefix_sum[int(r_prev * scale)] - prefix_sum[int(l_prev * scale)])
             )
-            - (prefix_sum[int(r_prev * scale)] - prefix_sum[int(l_prev * scale)])
+            > (5 * crop_size) ** 5
         )
-        > (5 * crop_size) ** 5
     ):
         l_prev = l_new
         r_prev = r_new
@@ -80,12 +84,19 @@ def make_mask(img, net):
     return mask
 
 
-def crop(img, net, transform, crop_size, mask, vect):
+def crop(img, net, transform, crop_size, mask, vect, scene_change_flag, constant_speed):
     out_mask = np.array([mask for i in range(3)])
     mask_numpy = np.moveaxis(out_mask, 0, 2)
     my_img = np.array(img.transpose(2, 0, 1))
     if crop_size[0] != len(my_img[0]):
-        h, b = check_border(crop_size[0], mask, len(mask) / len(my_img[0]), vect[0])
+        h, b = check_border(
+            crop_size[0],
+            mask,
+            len(mask) / len(my_img[0]),
+            vect[0],
+            scene_change_flag,
+            constant_speed,
+        )
         l, r = 0, len(my_img[0][0])
     else:
         l, r = check_border(
@@ -93,6 +104,8 @@ def crop(img, net, transform, crop_size, mask, vect):
             mask.transpose(1, 0),
             len(mask[0]) / len(my_img[0][0]),
             vect[0].transpose(1, 0),
+            scene_change_flag,
+            constant_speed,
         )
         h, b = 0, len(my_img[0])
 

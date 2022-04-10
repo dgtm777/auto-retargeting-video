@@ -5,12 +5,12 @@ from vapoursynth import core
 import vapoursynth as vs
 
 
-def upload_videos(in_filename, in_premiere_filename):
+def upload_videos(in_filename, in_compare_filename):
 
     input_video = core.ffms2.Source(source=in_filename)
 
-    if in_premiere_filename is not None:
-        input_premiere_video = core.ffms2.Source(source=in_premiere_filename)
+    if in_compare_filename is not None:
+        input_compare_video = core.ffms2.Source(source=in_compare_filename)
 
     yuv_video = core.resize.Bicubic(
         clip=input_video,
@@ -28,32 +28,35 @@ def upload_videos(in_filename, in_premiere_filename):
         matrix_in_s="709",
     )
 
-    if in_premiere_filename is not None:
-        input_premiere_video = core.resize.Bicubic(
-            clip=input_premiere_video,
-            width=input_premiere_video.width,
-            height=input_premiere_video.height,
+    if in_compare_filename is not None:
+        input_compare_video = core.resize.Bicubic(
+            clip=input_compare_video,
+            width=input_compare_video.width,
+            height=input_compare_video.height,
             # format=vs.YUV444P8,
             format=vs.RGB24,
             matrix_in_s="709",
         )
-        input_premiere_video = avs_subtitle(input_premiere_video, "premiere")
+        input_compare_video = avs_subtitle(
+            input_compare_video, in_compare_filename.split("/")[-1]
+        )
     else:
-        input_premiere_video = input_video
+        input_compare_video = input_video
 
     super_video = core.mv.Super(yuv_video)
     video_vector = core.mv.Analyse(super_video)
-    return yuv_video, input_video, input_premiere_video, video_vector
+    scene_detection = core.mv.SCDetection(yuv_video, video_vector)
+    return yuv_video, input_video, input_compare_video, video_vector, scene_detection
 
 
-def check_premiere_shape(premiere_image, img, func):
-    if premiere_image.shape[0] < img[1].shape[0]:
-        premiere_image = func(
+def check_compare_shape(compare_image, img, func):
+    if compare_image.shape[0] < img[1].shape[0]:
+        compare_image = func(
             (
-                premiere_image,
+                compare_image,
                 np.zeros(
                     shape=(
-                        img[1].shape[0] - premiere_image.shape[0],
+                        img[1].shape[0] - compare_image.shape[0],
                         img[1].shape[1],
                         img[1].shape[2],
                     )
@@ -61,20 +64,20 @@ def check_premiere_shape(premiere_image, img, func):
             )
         )
 
-    if premiere_image.shape[1] < img[1].shape[1]:
-        premiere_image = func(
+    if compare_image.shape[1] < img[1].shape[1]:
+        compare_image = func(
             (
-                premiere_image,
+                compare_image,
                 np.zeros(
                     shape=(
                         img[1].shape[0],
-                        img[1].shape[1] - premiere_image.shape[1],
+                        img[1].shape[1] - compare_image.shape[1],
                         img[1].shape[2],
                     )
                 ),
             )
         )
-    return premiere_image
+    return compare_image
 
 
 def make_processes(
@@ -91,8 +94,8 @@ def make_processes(
     out_filename_wrap=None,
     out_filename_both=None,
     out_filename_mask=None,
-    out_premiere_filename=None,
-    out_premiere_mask_filename=None,
+    out_compare_filename=None,
+    out_compare_mask_filename=None,
 ):
     processes = dict()
     processes[out_filename] = (
@@ -161,8 +164,8 @@ def make_processes(
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
-    if out_premiere_filename is not None:
-        processes[out_premiere_filename] = (
+    if out_compare_filename is not None:
+        processes[out_compare_filename] = (
             ffmpeg.input(
                 "pipe:",
                 format="rawvideo",
@@ -171,14 +174,14 @@ def make_processes(
             )
             .filter("fps", fps=fps, round="up")
             .output(
-                out_premiere_filename,
+                out_compare_filename,
                 preset="ultrafast",
             )
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
-    if out_premiere_mask_filename is not None:
-        processes[out_premiere_mask_filename] = (
+    if out_compare_mask_filename is not None:
+        processes[out_compare_mask_filename] = (
             ffmpeg.input(
                 "pipe:",
                 format="rawvideo",
@@ -190,7 +193,7 @@ def make_processes(
             )
             .filter("fps", fps=fps, round="up")
             .output(
-                out_premiere_mask_filename,
+                out_compare_mask_filename,
                 preset="ultrafast",
             )
             .overwrite_output()
@@ -203,15 +206,15 @@ def make_processes(
 def set_processes(
     img,
     mask,
-    cur_premiere_image,
+    cur_compare_image,
     func,
     processes,
     out_filename,
     out_filename_wrap=None,
     out_filename_both=None,
     out_filename_mask=None,
-    out_premiere_filename=None,
-    out_premiere_mask_filename=None,
+    out_compare_filename=None,
+    out_compare_mask_filename=None,
 ):
 
     processes[out_filename].stdin.write(img[1].astype(np.uint8).tobytes())
@@ -226,21 +229,21 @@ def set_processes(
         processes[out_filename_mask].stdin.write(
             func((mask[0], img[0], img[1], mask[1])).astype(np.uint8).tobytes()
         )
-    if out_premiere_filename in processes:
-        premiere_image = np.stack(
-            [np.array(cur_col) for cur_col in cur_premiere_image]
+    if out_compare_filename in processes:
+        compare_image = np.stack(
+            [np.array(cur_col) for cur_col in cur_compare_image]
         ).astype(np.uint8)
-        premiere_image = np.moveaxis(
-            premiere_image,
+        compare_image = np.moveaxis(
+            compare_image,
             0,
             -1,
         )
-        premiere_image = check_premiere_shape(premiere_image, img, func)
+        compare_image = check_compare_shape(compare_image, img, func)
 
-        processes[out_premiere_filename].stdin.write(
-            func((img[1], premiere_image)).astype(np.uint8).tobytes()
+        processes[out_compare_filename].stdin.write(
+            func((img[1], compare_image)).astype(np.uint8).tobytes()
         )
-    if out_premiere_mask_filename in processes:
-        processes[out_premiere_mask_filename].stdin.write(
-            func((img[0], mask[0], img[1], premiere_image)).astype(np.uint8).tobytes()
+    if out_compare_mask_filename in processes:
+        processes[out_compare_mask_filename].stdin.write(
+            func((img[0], mask[0], img[1], compare_image)).astype(np.uint8).tobytes()
         )

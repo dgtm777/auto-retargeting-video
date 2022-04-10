@@ -10,7 +10,7 @@ from make_videos import make_videos
 @click.option("--input", required=True, type=str, help="path to your input video")
 @click.option("--output", required=True, type=str, help="path to resulting video")
 @click.option(
-    "--wraper", default=None, type=str, help="path to resulting video with wrapping"
+    "--wrapper", default=None, type=str, help="path to resulting video with wrapping"
 )
 @click.option(
     "--compare",
@@ -45,33 +45,42 @@ from make_videos import make_videos
     type=float,
     help="set fixed speed for frame",
 )
+@click.option(
+    "--scene_detection_flag",
+    default=None,
+    type=bool,
+    help="if flag True, programm will use scene detection",
+)
 def read_flags(
     input,
     output,
-    wraper,
+    wrapper,
     compare,
     compare_mask,
     input_compare,
     output_compare,
     output_compare_mask,
     default_speed,
+    scene_detection_flag,
 ):
     make_videos(
         input,
         output,
-        out_filename_wrap=wraper,
+        out_filename_wrap=wrapper,
         out_filename_both=compare,
         out_filename_mask=compare_mask,
-        in_premiere_filename=input_compare,
-        out_premiere_filename=output_compare,
-        out_premiere_mask_filename=output_compare_mask,
+        in_compare_filename=input_compare,
+        out_compare_filename=output_compare,
+        out_compare_mask_filename=output_compare_mask,
         constant_speed=default_speed,
+        scene_detection_flag=scene_detection_flag,
     )
 
 
 if __name__ == "__main__":
     # read_flags()
     for in_filename in all_videos:
+        print(in_filename)
         make_videos(
             os.path.join(root_dir, "videos/" + in_filename + ".mp4"),
             os.path.join(root_dir, "videos/" + in_filename + "_cur.mp4"),
@@ -227,53 +236,3 @@ if __name__ == "__main__":
 # make_numpy : 8.963305
 # processes : 263.101963
 # premiere : 0.025751
-
-
-# import vapoursynth as vs
-# import ffmpeg
-# from vapoursynth import core
-# import os
-# import numpy as np
-# from constants import root_dir
-
-# core.std.LoadPlugin(
-#     path="/home/linuxbrew/.linuxbrew/Cellar/ffms2/2.40_2/lib/libffms2.so"
-# )
-
-# core.std.LoadPlugin(
-#     path="/home/linuxbrew/.linuxbrew/Cellar/mvtools/23_1/lib/libmvtools.so"
-# )
-
-# input_video = core.ffms2.Source(source=os.path.join(root_dir, "videos/Masyanya.mp4"))
-# video = core.resize.Bicubic(
-#     clip=input_video,
-#     width=input_video.width,
-#     height=input_video.height,
-#     format=vs.YUV444P8,
-# )
-# super_video = core.mv.Super(video)
-# video_vector = core.mv.Analyse(super_video)
-
-# result = core.mv.SCDetection(video, video_vector)
-
-# process2 = (
-#     ffmpeg.input(
-#         "pipe:",
-#         format="rawvideo",
-#         pix_fmt="rgb24",
-#         s="{}x{}".format(video.width, video.height),
-#     )
-#     .filter("fps", fps=video.fps, round="up")
-#     .output(os.path.join(root_dir, "scene.mp4"))
-#     .overwrite_output()
-#     .run_async(pipe_stdin=True)
-# )
-
-
-# for cur_frame in result.frames():
-#     frame = np.stack([np.array(cur_col) for cur_col in cur_frame]).astype(np.uint8)
-#     print(frame.max(), frame.min())
-#     process2.stdin.write(frame.tobytes())
-
-# process2.stdin.close()
-# process2.wait()
