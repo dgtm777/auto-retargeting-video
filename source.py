@@ -7,36 +7,46 @@ from make_videos import make_videos
 
 
 @click.command()
-@click.option("--input", required=True, type=str, help="path to your input video")
-@click.option("--output", required=True, type=str, help="path to resulting video")
 @click.option(
-    "--wrapper", default=None, type=str, help="path to resulting video with wrapping"
+    "--input", required=True, type=click.Path(), help="path to your input video"
+)
+@click.option(
+    "--output", required=True, type=click.Path(), help="path to resulting video"
+)
+@click.option(
+    "--wrapper",
+    default=None,
+    type=click.Path(),
+    help="path to resulting video with wrapping",
 )
 @click.option(
     "--compare",
     default=None,
-    type=str,
+    type=click.Path(),
     help="path to resulting video compared with input video",
 )
 @click.option(
     "--compare_mask",
     default=None,
-    type=str,
+    type=click.Path(),
     help="path to resulting video compared with input video with mask showing",
 )
 @click.option(
-    "--input_compare", default=None, type=str, help="path to the video for comparing"
+    "--input_compare",
+    default=None,
+    type=click.Path(),
+    help="path to the video for comparing",
 )
 @click.option(
     "--output_compare",
     default=None,
-    type=str,
+    type=click.Path(),
     help="path to the resulting video compared input_compare video",
 )
 @click.option(
     "--output_compare_mask",
     default=None,
-    type=str,
+    type=click.Path(),
     help="path to the resulting video compared input_compare video with mask showing",
 )
 @click.option(
@@ -47,9 +57,52 @@ from make_videos import make_videos
 )
 @click.option(
     "--scene_detection_flag",
-    default=None,
+    default=True,
     type=bool,
     help="if flag True, programm will use scene detection",
+)
+@click.option(
+    "--speed_coef",
+    default=7000,
+    type=click.FloatRange(min=0, min_open=True),
+    help="speed calculated as value in range (-128; 128) divided by speed_coef",
+)
+@click.option(
+    "--fps_coef",
+    default=2,
+    type=click.FloatRange(min=0, min_open=True),
+    help="coefficient indicating how far into future is possible to look to calculate the speed",
+)
+@click.option(
+    "--future_speed_coef",
+    default=0.1,
+    type=click.FloatRange(0, 1),
+    help="coefficient indicating how much weight has the future speed, when the current speed calculating",
+)
+@click.option(
+    "--prev_speed_coef",
+    default=0.8,
+    type=click.FloatRange(0, 1),
+    help="coefficient indicating how much weight has the previous speed, when the current speed calculating",
+)
+@click.option("--mask_coef", default=5, type=float, help="add weight to values in mask")
+@click.option(
+    "--speed_error",
+    default=0.01,
+    type=click.FloatRange(min=0, max=1),
+    help="what part of frame pixels have to move to move the frame",
+)
+@click.option(
+    "--jump_coef_wrap_size",
+    default=2 / 3,
+    type=click.FloatRange(min=0),
+    help="if the frame want to move on jump_coef_wrap_size of its size the moving is allowed",
+)
+@click.option(
+    "--jump_coef_mask_value",
+    default=5,
+    type=click.FloatRange(min=0),
+    help="ignored difference in mask weights",
 )
 def read_flags(
     input,
@@ -62,18 +115,36 @@ def read_flags(
     output_compare_mask,
     default_speed,
     scene_detection_flag,
+    speed_coef,
+    fps_coef,
+    future_speed_coef,
+    prev_speed_coef,
+    mask_coef,
+    speed_error,
+    jump_coef_wrap_size,
+    jump_coef_mask_value,
 ):
     make_videos(
         input,
         output,
+        parameters={
+            "mask_coef": mask_coef,
+            "constant_speed": default_speed,
+            "speed_error": speed_error,
+            "speed_coef": speed_coef,
+            "future_speed_coef": future_speed_coef,
+            "prev_speed_coef": prev_speed_coef,
+            "jump_coef_wrap_size": jump_coef_wrap_size,
+            "jump_coef_mask_value": jump_coef_mask_value,
+            "fps_coef": fps_coef,
+            "scene_detection_flag": scene_detection_flag,
+        },
         out_filename_wrap=wrapper,
         out_filename_both=compare,
         out_filename_mask=compare_mask,
         in_compare_filename=input_compare,
         out_compare_filename=output_compare,
         out_compare_mask_filename=output_compare_mask,
-        constant_speed=default_speed,
-        scene_detection_flag=scene_detection_flag,
     )
 
 
