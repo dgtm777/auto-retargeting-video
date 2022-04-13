@@ -33,16 +33,17 @@ def frame_to_numpy(frame):
 def make_videos(
     in_filename,
     out_filename,
+    crop_size=None,
     parameters={
-        "mask_coef": 5,
         "constant_speed": None,
         "speed_error": 0.01,
-        "speed_coef": 7000,
-        "future_speed_coef": 0.1,
+        "mask_coef": 5,
+        "fps_coef": 3,
+        "speed_coef": 8000,
         "prev_speed_coef": 0.8,
+        "future_speed_coef": 0.2,
         "jump_coef_wrap_size": 2 / 3,
         "jump_coef_mask_value": 5,
-        "fps_coef": 2,
         "scene_detection_flag": True,
     },
     out_filename_wrap=None,
@@ -72,10 +73,11 @@ def make_videos(
 
     height = yuv_video.height
     width = yuv_video.width
-    if height > width:
-        crop_size = (8, 12)
-    else:
-        crop_size = (12, 8)
+    if crop_size is None:
+        if height > width:
+            crop_size = (8, 12)
+        else:
+            crop_size = (12, 8)
 
     new_height = height
     new_width = width

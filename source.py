@@ -14,6 +14,18 @@ from make_videos import make_videos
     "--output", required=True, type=click.Path(), help="path to resulting video"
 )
 @click.option(
+    "--height",
+    default=1,
+    type=click.FloatRange(min=0, min_open=True),
+    help="ratio value",
+)
+@click.option(
+    "--width",
+    default=1,
+    type=click.FloatRange(min=0, min_open=True),
+    help="ratio value",
+)
+@click.option(
     "--wrapper",
     default=None,
     type=click.Path(),
@@ -63,19 +75,19 @@ from make_videos import make_videos
 )
 @click.option(
     "--speed_coef",
-    default=7000,
+    default=8000,
     type=click.FloatRange(min=0, min_open=True),
     help="speed calculated as value in range (-128; 128) divided by speed_coef",
 )
 @click.option(
     "--fps_coef",
-    default=2,
+    default=3,
     type=click.FloatRange(min=0, min_open=True),
     help="coefficient indicating how far into future is possible to look to calculate the speed",
 )
 @click.option(
     "--future_speed_coef",
-    default=0.1,
+    default=0.2,
     type=click.FloatRange(0, 1),
     help="coefficient indicating how much weight has the future speed, when the current speed calculating",
 )
@@ -107,6 +119,8 @@ from make_videos import make_videos
 def read_flags(
     input,
     output,
+    height,
+    width,
     wrapper,
     compare,
     compare_mask,
@@ -127,6 +141,7 @@ def read_flags(
     make_videos(
         input,
         output,
+        (height, width),
         parameters={
             "mask_coef": mask_coef,
             "constant_speed": default_speed,
@@ -148,32 +163,32 @@ def read_flags(
     )
 
 
-if __name__ == "__main__":
-    # read_flags()
-    for in_filename in all_videos:
-        print(in_filename)
-        make_videos(
-            os.path.join(root_dir, "videos/" + in_filename + ".mp4"),
-            os.path.join(root_dir, "videos/" + in_filename + "_cur.mp4"),
-            in_compare_filename=os.path.join(
-                root_dir, "videos/premiere/" + in_filename + ".mp4"
-            ),
-            out_filename_wrap=os.path.join(
-                root_dir, "videos/" + in_filename + "_wrap.mp4"
-            ),
-            out_filename_both=os.path.join(
-                root_dir, "videos/" + in_filename + "_both.mp4"
-            ),
-            out_filename_mask=os.path.join(
-                root_dir, "videos/" + in_filename + "_mask.mp4"
-            ),
-            out_compare_filename=os.path.join(
-                root_dir, "videos/" + in_filename + "_premiere.mp4"
-            ),
-            out_compare_mask_filename=os.path.join(
-                root_dir, "videos/" + in_filename + "_premiere_mask.mp4"
-            ),
-        )
+# if __name__ == "__main__":
+#     # read_flags()
+#     for in_filename in all_videos:
+#         print("\n\n\n", in_filename, "\n\n\n")
+#         make_videos(
+#             os.path.join(root_dir, "videos/" + in_filename + ".mp4"),
+#             os.path.join(root_dir, "videos/" + in_filename + "_cur.mp4"),
+#             in_compare_filename=os.path.join(
+#                 root_dir, "videos/premiere/" + in_filename + ".mp4"
+#             ),
+#             out_filename_wrap=os.path.join(
+#                 root_dir, "videos/" + in_filename + "_wrap.mp4"
+#             ),
+#             out_filename_both=os.path.join(
+#                 root_dir, "videos/" + in_filename + "_both.mp4"
+#             ),
+#             out_filename_mask=os.path.join(
+#                 root_dir, "videos/" + in_filename + "_mask.mp4"
+#             ),
+#             out_compare_filename=os.path.join(
+#                 root_dir, "videos/" + in_filename + "_premiere.mp4"
+#             ),
+#             out_compare_mask_filename=os.path.join(
+#                 root_dir, "videos/" + in_filename + "_premiere_mask.mp4"
+#             ),
+#         )
 
 # Fits
 # 0
