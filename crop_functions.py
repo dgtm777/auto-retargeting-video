@@ -12,18 +12,37 @@ speed_upgrade = 0
 speed_prev = 0
 
 
-def speed(vect):
-    if vect.max() - 128 > abs(vect.min() - 128):
-        max_speed = vect.max() - 128
+def speed(mask, crop_size, vect, parameters):
+    global l_prev, r_prev
+    if crop_size[0] != len(vect):
+        _, _, _, sign = find_new_borders(
+            mask,
+            l_prev,
+            r_prev,
+            crop_size[0],
+            len(mask) / len(vect[0]),
+            parameters,
+        )
     else:
+        _, _, _, sign = find_new_borders(
+            mask.transpose(1, 0),
+            l_prev,
+            r_prev,
+            crop_size[1],
+            len(mask[0]) / len(vect[0][0]),
+            parameters,
+        )
+
+    if sign is None or sign > 0:
+        max_speed = vect.max() - 128
+    elif sign < 0:
         max_speed = vect.min() - 128
-    return max_speed / 10000
+    else:
+        max_speed = 0
+    return max_speed / parameters["speed_coef"]
 
 
-def check_border(
-    crop_size, mask, scale, vect, future_speed, scene_change_flag, parameters
-):
-    global l_prev, r_prev, speed_upgrade, speed_prev
+def find_new_borders(mask, l_prev, r_prev, crop_size, scale, parameters):
     compress_arr = np.sum(mask ** parameters["mask_coef"], 1)
     prefix_sum = np.insert(np.cumsum(compress_arr), 0, 0)
     dif_sum = [
@@ -36,10 +55,17 @@ def check_border(
         r_new = len(mask) / scale
         l_new = r_new - crop_size
 
+    general_sign = None
     if l_prev is not None and l_prev != l_new:
-        general_sign = (l_prev - l_new) / abs(l_prev - l_new)
+        general_sign = (l_new - l_prev) / abs(l_prev - l_new)
         l_new += int(general_sign * 1 / scale)
         r_new += int(general_sign * 1 / scale)
+
+    return l_new, r_new, prefix_sum, general_sign
+
+
+def count_speed(mask, vect, l_new, r_new, crop_size, future_speed, parameters):
+    global l_prev, r_prev, speed_upgrade, speed_prev
     speed_upgrade = 0
     if parameters["constant_speed"] is None:
         if (l_prev is not None) and l_new - l_prev != 0:
@@ -64,7 +90,22 @@ def check_border(
         + speed_prev * parameters["prev_speed_coef"]
     )
     speed_prev = speed_upgrade
+    return speed_upgrade
 
+
+def move_borders(
+    mask,
+    prefix_sum,
+    scene_change_flag,
+    l_new,
+    r_new,
+    crop_size,
+    speed_upgrade,
+    general_sign,
+    scale,
+    parameters,
+):
+    global l_prev, r_prev
     if (
         l_prev is None
         or scene_change_flag == 1
@@ -89,6 +130,30 @@ def check_border(
         l_prev += div
         r_prev += div
     return l_prev, r_prev
+
+
+def check_border(
+    crop_size, mask, scale, vect, future_speed, scene_change_flag, parameters
+):
+    global l_prev, r_prev, speed_upgrade, speed_prev
+    l_new, r_new, prefix_sum, sign = find_new_borders(
+        mask, l_prev, r_prev, crop_size, scale, parameters
+    )
+    speed_upgrade = count_speed(
+        mask, vect, l_new, r_new, crop_size, future_speed, parameters
+    )
+    return move_borders(
+        mask,
+        prefix_sum,
+        scene_change_flag,
+        l_new,
+        r_new,
+        crop_size,
+        speed_upgrade,
+        sign,
+        scale,
+        parameters,
+    )
 
 
 def sigmoid(x):

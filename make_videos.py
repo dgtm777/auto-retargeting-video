@@ -38,7 +38,7 @@ def make_videos(
         "constant_speed": None,
         "speed_error": 0.01,
         "mask_coef": 5,
-        "fps_coef": 3,
+        "fps_coef": 2,
         "speed_coef": 8000,
         "prev_speed_coef": 0.8,
         "future_speed_coef": 0.2,
@@ -161,7 +161,7 @@ def make_videos(
             (new_height, new_width),
             future_array[it % future_array_len]["image_mask"],
             future_array[it % future_array_len]["vect"],
-            speed(np_moving_vector),
+            speed(image_mask, crop_size, np_moving_vector, parameters),
             future_array[it % future_array_len]["scene_flag"],
             parameters,
         )
@@ -205,7 +205,12 @@ def make_videos(
             (new_height, new_width),
             future_array[it % future_array_len]["image_mask"],
             future_array[it % future_array_len]["vect"],
-            0,
+            speed(
+                image_mask,
+                crop_size,
+                future_array[it % future_array_len]["vect"],
+                parameters,
+            ),
             future_array[it % future_array_len]["scene_flag"],
             parameters,
         )

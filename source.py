@@ -81,7 +81,7 @@ from make_videos import make_videos
 )
 @click.option(
     "--fps_coef",
-    default=3,
+    default=2,
     type=click.FloatRange(min=0, min_open=True),
     help="coefficient indicating how far into future is possible to look to calculate the speed",
 )
@@ -163,32 +163,32 @@ def read_flags(
     )
 
 
-# if __name__ == "__main__":
-#     # read_flags()
-#     for in_filename in all_videos:
-#         print("\n\n\n", in_filename, "\n\n\n")
-#         make_videos(
-#             os.path.join(root_dir, "videos/" + in_filename + ".mp4"),
-#             os.path.join(root_dir, "videos/" + in_filename + "_cur.mp4"),
-#             in_compare_filename=os.path.join(
-#                 root_dir, "videos/premiere/" + in_filename + ".mp4"
-#             ),
-#             out_filename_wrap=os.path.join(
-#                 root_dir, "videos/" + in_filename + "_wrap.mp4"
-#             ),
-#             out_filename_both=os.path.join(
-#                 root_dir, "videos/" + in_filename + "_both.mp4"
-#             ),
-#             out_filename_mask=os.path.join(
-#                 root_dir, "videos/" + in_filename + "_mask.mp4"
-#             ),
-#             out_compare_filename=os.path.join(
-#                 root_dir, "videos/" + in_filename + "_premiere.mp4"
-#             ),
-#             out_compare_mask_filename=os.path.join(
-#                 root_dir, "videos/" + in_filename + "_premiere_mask.mp4"
-#             ),
-#         )
+if __name__ == "__main__":
+    # read_flags()
+    for in_filename in all_videos:
+        print("\n\n\n", in_filename, "\n\n\n")
+        make_videos(
+            os.path.join(root_dir, "videos/" + in_filename + ".mp4"),
+            os.path.join(root_dir, "videos/" + in_filename + "_cur.mp4"),
+            in_compare_filename=os.path.join(
+                root_dir, "videos/premiere/" + in_filename + ".mp4"
+            ),
+            out_filename_wrap=os.path.join(
+                root_dir, "videos/" + in_filename + "_wrap.mp4"
+            ),
+            out_filename_both=os.path.join(
+                root_dir, "videos/" + in_filename + "_both.mp4"
+            ),
+            out_filename_mask=os.path.join(
+                root_dir, "videos/" + in_filename + "_mask.mp4"
+            ),
+            out_compare_filename=os.path.join(
+                root_dir, "videos/" + in_filename + "_premiere.mp4"
+            ),
+            out_compare_mask_filename=os.path.join(
+                root_dir, "videos/" + in_filename + "_premiere_mask.mp4"
+            ),
+        )
 
 # Fits
 # 0
