@@ -127,6 +127,7 @@ def make_videos(
     future_array_len = int(parameters["fps_coef"] * fps)
     future_array = [None] * (future_array_len)
     it = 0
+    changed_flag = 0
     for cur_moving_vector, cur_image, cur_compare_image, cur_scene in zip(
         speed_video.frames(),
         input_video.frames(),
@@ -153,6 +154,23 @@ def make_videos(
             it += 1
             continue
 
+        if cur_scene.props["_SceneChangePrev"] and parameters["scene_detection_flag"]:
+            changed_flag = it + future_array_len
+        if it < changed_flag:
+            future_speed = speed(
+                future_array[it % future_array_len]["image_mask"],
+                crop_size,
+                future_array[it % future_array_len]["vect"],
+                parameters,
+            )
+        else:
+            future_speed = speed(
+                image_mask,
+                crop_size,
+                np_moving_vector,
+                parameters,
+            )
+
         start_crop_time = datetime.now()
         img, mask = crop(
             future_array[it % future_array_len]["image"],
@@ -161,7 +179,7 @@ def make_videos(
             (new_height, new_width),
             future_array[it % future_array_len]["image_mask"],
             future_array[it % future_array_len]["vect"],
-            speed(image_mask, crop_size, np_moving_vector, parameters),
+            future_speed,
             future_array[it % future_array_len]["scene_flag"],
             parameters,
         )
@@ -206,7 +224,7 @@ def make_videos(
             future_array[it % future_array_len]["image_mask"],
             future_array[it % future_array_len]["vect"],
             speed(
-                image_mask,
+                future_array[it % future_array_len]["image_mask"],
                 crop_size,
                 future_array[it % future_array_len]["vect"],
                 parameters,

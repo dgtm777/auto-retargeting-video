@@ -51,4 +51,5 @@ all_videos = [
     "Sobaki2",
     "Richi",
     "SevaVideo",
+    "trailer",
 ]

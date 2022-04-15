@@ -105,7 +105,7 @@ def move_borders(
     scale,
     parameters,
 ):
-    global l_prev, r_prev
+    global l_prev, r_prev, speed_prev
     if (
         l_prev is None
         or scene_change_flag == 1
@@ -125,6 +125,8 @@ def move_borders(
     ):
         l_prev = l_new
         r_prev = r_new
+        if scene_change_flag:
+            speed_prev = 0
     elif l_prev is not None and l_new != l_prev:
         div = int(len(mask) / scale * speed_upgrade)
         l_prev += div
