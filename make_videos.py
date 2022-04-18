@@ -34,18 +34,16 @@ def make_videos(
     in_filename,
     out_filename,
     crop_size=None,
-    parameters={
-        "constant_speed": None,
-        "speed_error": 0.01,
-        "mask_coef": 5,
-        "fps_coef": 2,
-        "speed_coef": 8000,
-        "prev_speed_coef": 0.8,
-        "future_speed_coef": 0.2,
-        "jump_coef_wrap_size": 2 / 3,
-        "jump_coef_mask_value": 5,
-        "scene_detection_flag": True,
-    },
+    constant_speed=None,
+    speed_error=0.01,
+    mask_coef=5,
+    fps_coef=2,
+    speed_coef=8000,
+    prev_speed_coef=0.8,
+    future_speed_coef=0.2,
+    jump_coef_wrap_size=2 / 3,
+    jump_coef_mask_value=5,
+    scene_detection_flag=True,
     out_filename_wrap=None,
     out_filename_both=None,
     out_filename_mask=None,
@@ -58,6 +56,20 @@ def make_videos(
     crop_functions.speed_prev = 0
     crop_functions.speed_upgrade = 0
 
+    parameters = dict(
+        {
+            "constant_speed": constant_speed,
+            "speed_error": speed_error,
+            "mask_coef": mask_coef,
+            "fps_coef": fps_coef,
+            "speed_coef": speed_coef,
+            "prev_speed_coef": prev_speed_coef,
+            "future_speed_coef": future_speed_coef,
+            "jump_coef_wrap_size": jump_coef_wrap_size,
+            "jump_coef_mask_value": jump_coef_mask_value,
+            "scene_detection_flag": scene_detection_flag,
+        },
+    )
     (
         yuv_video,
         input_video,
@@ -65,11 +77,6 @@ def make_videos(
         video_vector,
         scene_detection_video,
     ) = upload_videos(in_filename, in_compare_filename)
-
-    # vert
-    # crop_size = (12, 8)
-    # hor
-    # crop_size = (8, 12)
 
     height = yuv_video.height
     width = yuv_video.width
@@ -101,7 +108,7 @@ def make_videos(
         coef_v = 2
         speed_video = core.mv.Mask(yuv_video, video_vector, kind=3)
 
-    fps = int(yuv_video.fps)
+    fps = float(yuv_video.fps)
     processes = make_processes(
         width,
         height,
@@ -119,7 +126,6 @@ def make_videos(
         out_compare_filename,
         out_compare_mask_filename,
     )
-
     make_mask_time = 0
     crop_function_time = 0
     processes_time = 0

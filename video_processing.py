@@ -105,6 +105,7 @@ def make_processes(
             pix_fmt="rgb24",
             s="{}x{}".format(new_width, new_height),
         )
+        .filter("setpts", f"N/({fps}*TB)+STARTPTS")
         .filter("fps", fps=fps, round="up")
         .output(
             out_filename,
@@ -121,6 +122,7 @@ def make_processes(
                 pix_fmt="rgb24",
                 s="{}x{}".format(width, height),
             )
+            .filter("setpts", f"N/({fps}*TB)+STARTPTS")
             .filter("fps", fps=fps, round="up")
             .output(
                 out_filename_wrap,
@@ -137,6 +139,7 @@ def make_processes(
                 pix_fmt="rgb24",
                 s="{}x{}".format(new_width + add_width, new_height + add_height),
             )
+            .filter("setpts", f"N/({fps}*TB)+STARTPTS")
             .filter("fps", fps=fps, round="up")
             .output(
                 out_filename_both,
@@ -156,6 +159,7 @@ def make_processes(
                     coef_h * new_height + 2 * add_height,
                 ),
             )
+            .filter("setpts", f"N/({fps}*TB)+STARTPTS")
             .filter("fps", fps=fps, round="up")
             .output(
                 out_filename_mask,
@@ -172,6 +176,7 @@ def make_processes(
                 pix_fmt="rgb24",
                 s="{}x{}".format(coef_v * new_width, coef_h * new_height),
             )
+            .filter("setpts", f"N/({fps}*TB)+STARTPTS")
             .filter("fps", fps=fps, round="up")
             .output(
                 out_compare_filename,
@@ -191,6 +196,7 @@ def make_processes(
                     coef_h * new_height + 2 * add_height,
                 ),
             )
+            .filter("setpts", f"N/({fps}*TB)+STARTPTS")
             .filter("fps", fps=fps, round="up")
             .output(
                 out_compare_mask_filename,
@@ -216,9 +222,7 @@ def set_processes(
     out_compare_filename=None,
     out_compare_mask_filename=None,
 ):
-
     processes[out_filename].stdin.write(img[1].astype(np.uint8).tobytes())
-
     if out_filename_wrap in processes:
         processes[out_filename_wrap].stdin.write(img[0].astype(np.uint8).tobytes())
     if out_filename_both in processes:

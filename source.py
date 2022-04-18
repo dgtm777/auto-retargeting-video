@@ -142,18 +142,16 @@ def read_flags(
         input,
         output,
         (height, width),
-        parameters={
-            "mask_coef": mask_coef,
-            "constant_speed": default_speed,
-            "speed_error": speed_error,
-            "speed_coef": speed_coef,
-            "future_speed_coef": future_speed_coef,
-            "prev_speed_coef": prev_speed_coef,
-            "jump_coef_wrap_size": jump_coef_wrap_size,
-            "jump_coef_mask_value": jump_coef_mask_value,
-            "fps_coef": fps_coef,
-            "scene_detection_flag": scene_detection_flag,
-        },
+        mask_coef=mask_coef,
+        constant_speed=default_speed,
+        speed_error=speed_error,
+        speed_coef=speed_coef,
+        future_speed_coef=future_speed_coef,
+        prev_speed_coef=prev_speed_coef,
+        jump_coef_wrap_size=jump_coef_wrap_size,
+        jump_coef_mask_value=jump_coef_mask_value,
+        fps_coef=fps_coef,
+        scene_detection_flag=scene_detection_flag,
         out_filename_wrap=wrapper,
         out_filename_both=compare,
         out_filename_mask=compare_mask,
@@ -295,7 +293,7 @@ if __name__ == "__main__":
 
 # Sobaki
 # 0
-# Iteration : 10345
+# Iteration : 1034
 # All work : 212.873195
 # make_mask : 96.987275
 # crop_function : 10.85541
