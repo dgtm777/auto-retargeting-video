@@ -1,7 +1,7 @@
 import numpy as np
 from datetime import datetime
 
-
+from copy import deepcopy
 from preprocess import get_nn
 
 from constants import transform
@@ -30,19 +30,56 @@ def frame_to_numpy(frame):
     return image
 
 
+def set_jump_flag(
+    future_array,
+    future_array_len,
+    it,
+    parameters,
+    new_height,
+    new_width,
+    crop_size,
+    image_len,
+):
+    jump_flag = True
+    scene_flag = True
+    l_prev = None
+    for i in range(parameters["jump_delay_coef"]):
+        _, jump_flag_cur, l_new = speed(
+            future_array[(it + i) % future_array_len]["image_mask"],
+            (new_height, new_width),
+            future_array[(it + i) % future_array_len]["vect"],
+            parameters,
+        )
+        # if int((it - future_array_len) / (0.5 * future_array_len)) == 21:
+        #     print(i, l_prev, l_new, jump_flag)
+        if jump_flag_cur is False:
+            jump_flag = False
+        if l_prev is not None and (
+            (abs(l_new - l_prev) >= parameters["jump_coef_wrap_size"] * crop_size)
+            and abs(l_new - l_prev) >= image_len * parameters["jump_coef_img_size"]
+        ):
+            jump_flag = False
+        if future_array[(it + i) % future_array_len]["scene_flag"]:
+            scene_flag = False
+        l_prev = l_new
+    return jump_flag, scene_flag
+
+
 def make_videos(
     in_filename,
     out_filename,
-    crop_size=None,
+    ratio=None,
     constant_speed=None,
-    speed_error=0.01,
+    speed_error=0.001,
     mask_coef=5,
     fps_coef=2,
     speed_coef=8000,
-    prev_speed_coef=0.8,
-    future_speed_coef=0.2,
-    jump_coef_wrap_size=2 / 3,
+    prev_speed_coef=0.9,
+    future_speed_coef=0.3,
+    jump_coef_img_size=0.2,
+    jump_coef_wrap_size=1 / 2,
     jump_coef_mask_value=5,
+    jump_delay_coef=1,
     scene_detection_flag=True,
     out_filename_wrap=None,
     out_filename_both=None,
@@ -56,6 +93,16 @@ def make_videos(
     crop_functions.speed_prev = 0
     crop_functions.speed_upgrade = 0
 
+    (
+        yuv_video,
+        input_video,
+        input_compare_video,
+        video_vector,
+        scene_detection_video,
+    ) = upload_videos(in_filename, in_compare_filename)
+
+    fps = float(yuv_video.fps)
+
     parameters = dict(
         {
             "constant_speed": constant_speed,
@@ -65,30 +112,24 @@ def make_videos(
             "speed_coef": speed_coef,
             "prev_speed_coef": prev_speed_coef,
             "future_speed_coef": future_speed_coef,
+            "jump_coef_img_size": jump_coef_img_size,
             "jump_coef_wrap_size": jump_coef_wrap_size,
             "jump_coef_mask_value": jump_coef_mask_value,
+            "jump_delay_coef": int(jump_delay_coef * fps),
             "scene_detection_flag": scene_detection_flag,
         },
     )
-    (
-        yuv_video,
-        input_video,
-        input_compare_video,
-        video_vector,
-        scene_detection_video,
-    ) = upload_videos(in_filename, in_compare_filename)
-
     height = yuv_video.height
     width = yuv_video.width
-    if crop_size is None:
+    if ratio is None:
         if height > width:
-            crop_size = (8, 12)
+            ratio = (8, 12)
         else:
-            crop_size = (12, 8)
+            ratio = (12, 8)
 
     new_height = height
     new_width = width
-    k = crop_size[0] * width / crop_size[1] / height
+    k = ratio[0] * width / ratio[1] / height
     net = get_nn()
     add_height = 0
     add_width = 0
@@ -98,17 +139,25 @@ def make_videos(
     if k < 1:
         new_height = int(height * k)
         add_height = height
+        crop_size = new_height
         func = np.vstack
         coef_h = 2
         speed_video = core.mv.Mask(yuv_video, video_vector, kind=4)
+        image_len = new_height
     else:
         new_width = int(width / k)
         add_width = width
         func = np.hstack
+        crop_size = new_width
         coef_v = 2
         speed_video = core.mv.Mask(yuv_video, video_vector, kind=3)
+        image_len = new_width
 
-    fps = float(yuv_video.fps)
+    if new_height % 2 == 1:
+        new_height -= 1
+    if new_width % 2 == 1:
+        new_width -= 1
+
     processes = make_processes(
         width,
         height,
@@ -140,6 +189,7 @@ def make_videos(
         input_compare_video.frames(),
         scene_detection_video.frames(),
     ):
+        # print("second: ", (it - future_array_len) / fps)
         image = frame_to_numpy(cur_image)
         make_mask_start_time = datetime.now()
         image_mask = make_mask(image, net)
@@ -162,20 +212,29 @@ def make_videos(
 
         if cur_scene.props["_SceneChangePrev"] and parameters["scene_detection_flag"]:
             changed_flag = it + future_array_len
+        updated_parameters = deepcopy(parameters)
         if it < changed_flag:
-            future_speed = speed(
-                future_array[it % future_array_len]["image_mask"],
-                crop_size,
-                future_array[it % future_array_len]["vect"],
-                parameters,
-            )
+            updated_parameters["future_speed_coef"] = 0
+            future_speed = 0
         else:
-            future_speed = speed(
+            future_speed, _, _ = speed(
                 image_mask,
-                crop_size,
+                (new_height, new_width),
                 np_moving_vector,
                 parameters,
             )
+        jump_flag, scene_flag = set_jump_flag(
+            future_array,
+            future_array_len,
+            it,
+            parameters,
+            new_height,
+            new_width,
+            crop_size,
+            image_len,
+        )
+        if jump_flag is False:
+            updated_parameters["jump_coef_wrap_size"] = max(len(image), len(image[0]))
 
         start_crop_time = datetime.now()
         img, mask = crop(
@@ -186,8 +245,8 @@ def make_videos(
             future_array[it % future_array_len]["image_mask"],
             future_array[it % future_array_len]["vect"],
             future_speed,
-            future_array[it % future_array_len]["scene_flag"],
-            parameters,
+            future_array[it % future_array_len]["scene_flag"] and scene_flag,
+            updated_parameters,
         )
         crop_function_time += (datetime.now() - start_crop_time).seconds * 10**6 + (
             datetime.now() - start_crop_time
@@ -220,8 +279,32 @@ def make_videos(
 
         it += 1
 
+    parameters["jump_coef_wrap_size"] = max(len(image), len(image[0]))
+
     for i in range(future_array_len):
+        scene_flag = True
+        if i < updated_parameters["jump_delay_coef"]:
+            jump_flag, scene_flag = set_jump_flag(
+                future_array,
+                future_array_len,
+                it,
+                parameters,
+                new_height,
+                new_width,
+                crop_size,
+                image_len,
+            )
+            if jump_flag is False:
+                updated_parameters["jump_coef_wrap_size"] = max(
+                    len(image), len(image[0])
+                )
         start_crop_time = datetime.now()
+        future_speed, _, _ = speed(
+            future_array[it % future_array_len]["image_mask"],
+            (new_height, new_width),
+            future_array[it % future_array_len]["vect"],
+            parameters,
+        )
         img, mask = crop(
             future_array[it % future_array_len]["image"],
             net,
@@ -229,13 +312,8 @@ def make_videos(
             (new_height, new_width),
             future_array[it % future_array_len]["image_mask"],
             future_array[it % future_array_len]["vect"],
-            speed(
-                future_array[it % future_array_len]["image_mask"],
-                crop_size,
-                future_array[it % future_array_len]["vect"],
-                parameters,
-            ),
-            future_array[it % future_array_len]["scene_flag"],
+            future_speed,
+            future_array[it % future_array_len]["scene_flag"] and scene_flag,
             parameters,
         )
         crop_function_time += (datetime.now() - start_crop_time).seconds * 10**6 + (

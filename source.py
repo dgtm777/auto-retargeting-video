@@ -87,34 +87,46 @@ from make_videos import make_videos
 )
 @click.option(
     "--future_speed_coef",
-    default=0.2,
+    default=0.3,
     type=click.FloatRange(0, 1),
     help="coefficient indicating how much weight has the future speed, when the current speed calculating",
 )
 @click.option(
     "--prev_speed_coef",
-    default=0.8,
+    default=0.9,
     type=click.FloatRange(0, 1),
     help="coefficient indicating how much weight has the previous speed, when the current speed calculating",
 )
 @click.option("--mask_coef", default=5, type=float, help="add weight to values in mask")
 @click.option(
     "--speed_error",
-    default=0.01,
+    default=0.001,
     type=click.FloatRange(min=0, max=1),
     help="what part of frame pixels have to move to move the frame",
 )
 @click.option(
     "--jump_coef_wrap_size",
-    default=2 / 3,
+    default=1 / 2,
     type=click.FloatRange(min=0),
     help="if the frame want to move on jump_coef_wrap_size of its size the moving is allowed",
+)
+@click.option(
+    "--jump_coef_img_size",
+    default=0.2,
+    type=click.FloatRange(min=0),
+    help="if the frame want to move on jump_coef_img_size of image size the moving is allowed",
 )
 @click.option(
     "--jump_coef_mask_value",
     default=5,
     type=click.FloatRange(min=0),
     help="ignored difference in mask weights",
+)
+@click.option(
+    "--jump_delay_coef",
+    default=1,
+    type=click.FloatRange(min=0),
+    help="number of seconds waited before strong changing",
 )
 def read_flags(
     input,
@@ -136,7 +148,9 @@ def read_flags(
     mask_coef,
     speed_error,
     jump_coef_wrap_size,
+    jump_coef_img_size,
     jump_coef_mask_value,
+    jump_delay_coef,
 ):
     make_videos(
         input,
@@ -149,7 +163,9 @@ def read_flags(
         future_speed_coef=future_speed_coef,
         prev_speed_coef=prev_speed_coef,
         jump_coef_wrap_size=jump_coef_wrap_size,
+        jump_coef_img_size=jump_coef_img_size,
         jump_coef_mask_value=jump_coef_mask_value,
+        jump_delay_coef=jump_delay_coef,
         fps_coef=fps_coef,
         scene_detection_flag=scene_detection_flag,
         out_filename_wrap=wrapper,
