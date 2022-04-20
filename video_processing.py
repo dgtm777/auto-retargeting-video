@@ -107,10 +107,7 @@ def make_processes(
         )
         .filter("setpts", f"N/({fps}*TB)+STARTPTS")
         .filter("fps", fps=fps, round="up")
-        .output(
-            out_filename,
-            preset="ultrafast",
-        )
+        .output(out_filename, preset="ultrafast", pix_fmt="yuv420p")
         .overwrite_output()
         .run_async(pipe_stdin=True)
     )
@@ -124,10 +121,7 @@ def make_processes(
             )
             .filter("setpts", f"N/({fps}*TB)+STARTPTS")
             .filter("fps", fps=fps, round="up")
-            .output(
-                out_filename_wrap,
-                preset="ultrafast",
-            )
+            .output(out_filename_wrap, preset="ultrafast", pix_fmt="yuv420p")
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
@@ -141,10 +135,7 @@ def make_processes(
             )
             .filter("setpts", f"N/({fps}*TB)+STARTPTS")
             .filter("fps", fps=fps, round="up")
-            .output(
-                out_filename_both,
-                preset="ultrafast",
-            )
+            .output(out_filename_both, preset="ultrafast", pix_fmt="yuv420p")
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
@@ -161,10 +152,7 @@ def make_processes(
             )
             .filter("setpts", f"N/({fps}*TB)+STARTPTS")
             .filter("fps", fps=fps, round="up")
-            .output(
-                out_filename_mask,
-                preset="ultrafast",
-            )
+            .output(out_filename_mask, preset="ultrafast", pix_fmt="yuv420p")
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
@@ -178,10 +166,7 @@ def make_processes(
             )
             .filter("setpts", f"N/({fps}*TB)+STARTPTS")
             .filter("fps", fps=fps, round="up")
-            .output(
-                out_compare_filename,
-                preset="ultrafast",
-            )
+            .output(out_compare_filename, preset="ultrafast", pix_fmt="yuv420p")
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
@@ -198,10 +183,7 @@ def make_processes(
             )
             .filter("setpts", f"N/({fps}*TB)+STARTPTS")
             .filter("fps", fps=fps, round="up")
-            .output(
-                out_compare_mask_filename,
-                preset="ultrafast",
-            )
+            .output(out_compare_mask_filename, preset="ultrafast", pix_fmt="yuv420p")
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
