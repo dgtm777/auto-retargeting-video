@@ -4,6 +4,7 @@ import click
 from constants import root_dir, all_videos
 
 from make_videos import make_videos
+import constants
 
 
 @click.command()
@@ -16,13 +17,13 @@ from make_videos import make_videos
 @click.option(
     "--height",
     default=1,
-    type=click.FloatRange(min=0, min_open=True),
+    type=click.IntRange(min=0, min_open=True),
     help="ratio value",
 )
 @click.option(
     "--width",
     default=1,
-    type=click.FloatRange(min=0, min_open=True),
+    type=click.IntRange(min=0, min_open=True),
     help="ratio value",
 )
 @click.option(
@@ -74,59 +75,83 @@ from make_videos import make_videos
     help="if flag True, programm will use scene detection",
 )
 @click.option(
+    "--scene_detection_ysc",
+    default=255,
+    type=click.IntRange(min=0),
+    help="parameter for MVTools  MSCDetection",
+)
+@click.option(
+    "--scene_detection_thSCD1",
+    default=100,
+    type=click.IntRange(min=0),
+    help="parameter for MVTools  MSCDetection",
+)
+@click.option(
     "--speed_coef",
-    default=8000,
+    default=constants.speed_coef,
     type=click.FloatRange(min=0, min_open=True),
     help="speed calculated as value in range (-128; 128) divided by speed_coef",
 )
 @click.option(
     "--fps_coef",
-    default=2,
+    default=constants.fps_coef,
     type=click.FloatRange(min=0, min_open=True),
     help="coefficient indicating how far into future is possible to look to calculate the speed",
 )
 @click.option(
     "--future_speed_coef",
-    default=0.3,
+    default=constants.future_speed_coef,
     type=click.FloatRange(0, 1),
-    help="coefficient indicating how much weight has the future speed, when the current speed calculating",
+    help="coefficient indicating how much weight has the future speed, when the current speed calculating \n Set it 0 to reduce future speed",
 )
 @click.option(
     "--prev_speed_coef",
-    default=0.9,
+    default=constants.prev_speed_coef,
     type=click.FloatRange(0, 1),
     help="coefficient indicating how much weight has the previous speed, when the current speed calculating",
 )
 @click.option("--mask_coef", default=5, type=float, help="add weight to values in mask")
 @click.option(
     "--speed_error",
-    default=0.001,
+    default=constants.speed_error,
     type=click.FloatRange(min=0, max=1),
     help="what part of frame pixels have to move to move the frame",
 )
 @click.option(
     "--jump_coef_wrap_size",
-    default=1 / 2,
+    default=constants.jump_coef_wrap_size,
     type=click.FloatRange(min=0),
     help="if the frame want to move on jump_coef_wrap_size of its size the moving is allowed",
 )
 @click.option(
     "--jump_coef_img_size",
-    default=0.2,
+    default=constants.jump_coef_img_size,
     type=click.FloatRange(min=0),
     help="if the frame want to move on jump_coef_img_size of image size the moving is allowed",
 )
 @click.option(
     "--jump_coef_mask_value",
-    default=5,
+    default=constants.jump_coef_mask_value,
     type=click.FloatRange(min=0),
     help="ignored difference in mask weights",
 )
 @click.option(
     "--jump_delay_coef",
-    default=1,
+    default=constants.jump_delay_coef,
     type=click.FloatRange(min=0),
-    help="number of seconds waited before strong changing",
+    help="number of seconds waited before strong changing \n should be less than future_speed_coef",
+)
+@click.option(
+    "--moving_available_coef",
+    default=constants.moving_available_coef,
+    type=click.FloatRange(min=0),
+    help="requeired number of seconds with willing to move to the same direction to start moving",
+)
+@click.option(
+    "--weighted_sum",
+    default=True,
+    type=bool,
+    help="use weighted sum to find mask area with hightest sum of probabilities ",
 )
 def read_flags(
     input,
@@ -141,6 +166,8 @@ def read_flags(
     output_compare_mask,
     default_speed,
     scene_detection_flag,
+    scene_detection_ysc,
+    scene_detection_thSCD1,
     speed_coef,
     fps_coef,
     future_speed_coef,
@@ -151,6 +178,8 @@ def read_flags(
     jump_coef_img_size,
     jump_coef_mask_value,
     jump_delay_coef,
+    moving_available_coef,
+    weighted_sum,
 ):
     make_videos(
         input,
@@ -168,171 +197,41 @@ def read_flags(
         jump_delay_coef=jump_delay_coef,
         fps_coef=fps_coef,
         scene_detection_flag=scene_detection_flag,
+        scene_detection_parameters=(scene_detection_ysc, scene_detection_thSCD1),
         out_filename_wrap=wrapper,
         out_filename_both=compare,
         out_filename_mask=compare_mask,
         in_compare_filename=input_compare,
         out_compare_filename=output_compare,
         out_compare_mask_filename=output_compare_mask,
+        moving_available_coef=moving_available_coef,
+        weighted_sum=weighted_sum,
     )
 
 
 if __name__ == "__main__":
-    # read_flags()
-    for in_filename in all_videos:
-        print("\n\n\n", in_filename, "\n\n\n")
-        make_videos(
-            os.path.join(root_dir, "videos/" + in_filename + ".mp4"),
-            os.path.join(root_dir, "videos/" + in_filename + "_cur.mp4"),
-            in_compare_filename=os.path.join(
-                root_dir, "videos/premiere/" + in_filename + ".mp4"
-            ),
-            out_filename_wrap=os.path.join(
-                root_dir, "videos/" + in_filename + "_wrap.mp4"
-            ),
-            out_filename_both=os.path.join(
-                root_dir, "videos/" + in_filename + "_both.mp4"
-            ),
-            out_filename_mask=os.path.join(
-                root_dir, "videos/" + in_filename + "_mask.mp4"
-            ),
-            out_compare_filename=os.path.join(
-                root_dir, "videos/" + in_filename + "_premiere.mp4"
-            ),
-            out_compare_mask_filename=os.path.join(
-                root_dir, "videos/" + in_filename + "_premiere_mask.mp4"
-            ),
-        )
-
-# Fits
-# 0
-# Iteration : 202
-# All work : 64.293668
-# make_mask : 19.872874
-# crop_function : 4.230969
-# make_numpy : 1.155165
-# processes : 37.948042
-# premiere : 0.003809
-# 138731143 - 3
-# 197553477 - 8
-
-# Dogs
-# 0
-# Iteration : 497
-# All work : 202.830247
-# make_mask : 63.349225
-# crop_function : 10.93727
-# make_numpy : 3.395281
-# processes : 122.271023
-# premiere : 0.011215
-# 492008769 - 8
-
-# HospitalTrick
-# 0
-# Iteration : 166
-# All work : 23.422753
-# make_mask : 12.271159
-# crop_function : 1.103546
-# make_numpy : 0.328848
-# processes : 8.856382
-# premiere : 0.00241
-
-# Domino
-# 0
-# Iteration : 966
-# All work : 259.218114
-# make_mask : 90.026925
-# crop_function : 15.039175
-# make_numpy : 3.620245
-# processes : 141.795894
-# premiere : 3.480874
-
-# Sherbakov
-# 0
-# Iteration : 993
-# All work : 240.303535
-# make_mask : 81.475975
-# crop_function : 14.975807
-# make_numpy : 3.391496
-# processes : 132.469432
-# premiere : 3.476289
-
-# Masyanya
-# 0
-# Iteration : 1156
-# All work : 251.45128
-# make_mask : 75.054891
-# crop_function : 16.039096
-# make_numpy : 4.540995
-# processes : 152.550436
-# premiere : 0.017667
-
-# NaskaFigurist
-# 0
-# Iteration : 578
-# All work : 86.352523
-# make_mask : 45.262637
-# crop_function : 4.157637
-# make_numpy : 1.001158
-# processes : 32.697212
-# premiere : 0.00884
-
-# NaskaFigurist2
-# 0
-# Iteration : 898
-# All work : 279.999228
-# make_mask : 94.04784
-# crop_function : 12.527587
-# make_numpy : 3.777386
-# processes : 164.277239
-# premiere : 0.015305
-
-# DenkaPastuh
-# 0
-# Iteration : 15623
-# All work : 619.974231
-# make_mask : 184.506371
-# crop_function : 35.27427
-# make_numpy : 8.394206
-# processes : 381.591798
-# premiere : 0.031176
-
-# DenkaPastuh2
-# 0
-# Iteration : 17039
-# All work : 453.129789
-# make_mask : 194.536499
-# crop_function : 20.324122
-# make_numpy : 7.130253
-# processes : 217.670513
-# premiere : 0.030084
-
-# Sobaki
-# 0
-# Iteration : 1034
-# All work : 212.873195
-# make_mask : 96.987275
-# crop_function : 10.85541
-# make_numpy : 3.801291
-# processes : 93.334737
-# premiere : 2.259186
-
-# Sobaki2
-# 0
-# Iteration : 761
-# All work : 83.36558
-# make_mask : 47.296938
-# crop_function : 4.294106
-# make_numpy : 1.178804
-# processes : 27.843399
-# premiere : 0.010694
-
-# Richi
-# 0
-# Iteration : 12863
-# All work : 451.302306
-# make_mask : 144.698839
-# crop_function : 26.494984
-# make_numpy : 8.963305
-# processes : 263.101963
-# premiere : 0.025751
+    read_flags()
+    # for in_filename in all_videos:
+    #     print("\n\n\n", in_filename, "\n\n\n")
+    #     make_videos(
+    #         os.path.join(root_dir, "videos/" + in_filename + ".mp4"),
+    #         os.path.join(root_dir, "videos/" + in_filename + "_cur.mp4"),
+    #         # in_compare_filename=os.path.join(
+    #         #     root_dir, "videos/premiere/" + in_filename + ".mp4"
+    #         # ),
+    #         # out_filename_wrap=os.path.join(
+    #         #     root_dir, "videos/" + in_filename + "_wrap.mp4"
+    #         # ),
+    #         # out_filename_both=os.path.join(
+    #         #     root_dir, "videos/" + in_filename + "_both.mp4"
+    #         # ),
+    #         # out_filename_mask=os.path.join(
+    #         #     root_dir, "videos/" + in_filename + "_mask.mp4"
+    #         # ),
+    #         # out_compare_    # "Svaty3",filename=os.path.join(
+    #         #     root_dir, "videos/" + in_filename + "_premiere.mp4"
+    #         # ),
+    #         # out_compare_mask_filename=os.path.join(
+    #         #     root_dir, "videos/" + in_filename + "_premiere_mask.mp4"
+    #         # ),
+    #     )
