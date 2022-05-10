@@ -3,6 +3,7 @@ from datetime import datetime
 
 from copy import deepcopy
 from preprocess import get_nn
+import constants
 
 from constants import transform
 from crop_functions import crop, make_mask, speed
@@ -39,48 +40,76 @@ def set_jump_flag(
     new_width,
     crop_size,
     image_len,
+    max_iteration,
 ):
     jump_flag = True
     scene_flag = True
+    move_flag = True
+    move_flag_cur = True
+    future_flag = True
     l_prev = None
-    for i in range(parameters["jump_delay_coef"]):
-        _, jump_flag_cur, l_new = speed(
+    for i in range(
+        min(
+            max(parameters["jump_delay_coef"], parameters["moving_available_coef"]),
+            max_iteration,
+        )
+    ):
+        _, jump_flag_cur, l_new, sign = speed(
             future_array[(it + i) % future_array_len]["image_mask"],
             (new_height, new_width),
             future_array[(it + i) % future_array_len]["vect"],
             parameters,
         )
-        # if int((it - future_array_len) / (0.5 * future_array_len)) == 21:
-        #     print(i, l_prev, l_new, jump_flag)
-        if jump_flag_cur is False:
-            jump_flag = False
+        if i == 0:
+            move_flag_cur = sign
+        elif sign != move_flag_cur and i < parameters["moving_available_coef"]:
+            move_flag_cur = False
+        elif (
+            sign == move_flag_cur
+            and i < parameters["moving_available_coef"]
+            and move_flag_cur is False
+        ):
+            move_flag = False
+        if i < parameters["jump_delay_coef"]:
+            if jump_flag_cur is False:
+                jump_flag = False
+            if l_prev is not None and (
+                (abs(l_new - l_prev) >= parameters["jump_coef_wrap_size"] * crop_size)
+                and abs(l_new - l_prev) >= image_len * parameters["jump_coef_img_size"]
+            ):
+                jump_flag = False
+            if i != 0 and future_array[(it + i) % future_array_len]["scene_flag"]:
+                scene_flag = False
+
         if l_prev is not None and (
             (abs(l_new - l_prev) >= parameters["jump_coef_wrap_size"] * crop_size)
             and abs(l_new - l_prev) >= image_len * parameters["jump_coef_img_size"]
         ):
-            jump_flag = False
-        if future_array[(it + i) % future_array_len]["scene_flag"]:
-            scene_flag = False
+            future_flag = False
         l_prev = l_new
-    return jump_flag, scene_flag
+    return jump_flag, scene_flag, move_flag, future_flag
 
 
 def make_videos(
     in_filename,
     out_filename,
-    ratio=None,
+    # ratio=None,
+    ratio,
     constant_speed=None,
-    speed_error=0.001,
-    mask_coef=5,
-    fps_coef=2,
-    speed_coef=8000,
-    prev_speed_coef=0.9,
-    future_speed_coef=0.3,
-    jump_coef_img_size=0.2,
-    jump_coef_wrap_size=1 / 2,
-    jump_coef_mask_value=5,
-    jump_delay_coef=1,
+    speed_error=constants.speed_error,
+    mask_coef=constants.mask_coef,
+    fps_coef=constants.fps_coef,
+    speed_coef=constants.speed_coef,
+    prev_speed_coef=constants.prev_speed_coef,
+    future_speed_coef=constants.future_speed_coef,
+    jump_coef_img_size=constants.jump_coef_img_size,
+    jump_coef_wrap_size=constants.jump_coef_wrap_size,
+    jump_coef_mask_value=constants.jump_coef_mask_value,
+    jump_delay_coef=constants.jump_delay_coef,
+    scene_detection_parameters=constants.scene_detection_parameters,
+    moving_available_coef=constants.moving_available_coef,
     scene_detection_flag=True,
+    weighted_sum=True,
     out_filename_wrap=None,
     out_filename_both=None,
     out_filename_mask=None,
@@ -99,7 +128,7 @@ def make_videos(
         input_compare_video,
         video_vector,
         scene_detection_video,
-    ) = upload_videos(in_filename, in_compare_filename)
+    ) = upload_videos(in_filename, in_compare_filename, scene_detection_parameters)
 
     fps = float(yuv_video.fps)
 
@@ -116,16 +145,18 @@ def make_videos(
             "jump_coef_wrap_size": jump_coef_wrap_size,
             "jump_coef_mask_value": jump_coef_mask_value,
             "jump_delay_coef": int(jump_delay_coef * fps),
+            "moving_available_coef": int(moving_available_coef * fps),
             "scene_detection_flag": scene_detection_flag,
+            "weighted_sum": weighted_sum,
         },
     )
     height = yuv_video.height
     width = yuv_video.width
-    if ratio is None:
-        if height > width:
-            ratio = (8, 12)
-        else:
-            ratio = (12, 8)
+    # if ratio is None:
+    #     if height > width:
+    #         ratio = (8, 12)
+    #     else:
+    #         ratio = (12, 8)
 
     new_height = height
     new_width = width
@@ -179,17 +210,19 @@ def make_videos(
     crop_function_time = 0
     processes_time = 0
     whole_time = datetime.now()
-    future_array_len = int(parameters["fps_coef"] * fps)
-    future_array = [None] * (future_array_len)
+    future_array_len = max(
+        max(int(parameters["fps_coef"] * fps), parameters["jump_delay_coef"]), 1
+    )
+    future_array = [None] * future_array_len
     it = 0
     changed_flag = 0
+    after_scene_changed = 0
     for cur_moving_vector, cur_image, cur_compare_image, cur_scene in zip(
         speed_video.frames(),
         input_video.frames(),
         input_compare_video.frames(),
         scene_detection_video.frames(),
     ):
-        # print("second: ", (it - future_array_len) / fps)
         image = frame_to_numpy(cur_image)
         make_mask_start_time = datetime.now()
         image_mask = make_mask(image, net)
@@ -210,20 +243,7 @@ def make_videos(
             it += 1
             continue
 
-        if cur_scene.props["_SceneChangePrev"] and parameters["scene_detection_flag"]:
-            changed_flag = it + future_array_len
-        updated_parameters = deepcopy(parameters)
-        if it < changed_flag:
-            updated_parameters["future_speed_coef"] = 0
-            future_speed = 0
-        else:
-            future_speed, _, _ = speed(
-                image_mask,
-                (new_height, new_width),
-                np_moving_vector,
-                parameters,
-            )
-        jump_flag, scene_flag = set_jump_flag(
+        jump_flag, scene_flag, move_flag, future_flag = set_jump_flag(
             future_array,
             future_array_len,
             it,
@@ -232,18 +252,54 @@ def make_videos(
             new_width,
             crop_size,
             image_len,
+            future_array_len,
         )
+        updated_parameters = deepcopy(parameters)
         if jump_flag is False:
             updated_parameters["jump_coef_wrap_size"] = max(len(image), len(image[0]))
+            updated_parameters["scene_detection_flag"] = False
 
+        if future_flag is False:
+            updated_parameters["future_speed_coef"] = 0
+
+        if move_flag is False:
+            updated_parameters["constant_speed"] = 0
+            updated_parameters["future_speed_coef"] = 0
+            updated_parameters["prev_speed_coef"] = 0
+
+        mask = future_array[it % future_array_len]["image_mask"]
+        vect = future_array[it % future_array_len]["vect"]
+        if cur_scene.props["_SceneChangePrev"] and parameters["scene_detection_flag"]:
+            changed_flag = it + future_array_len
+        if it < changed_flag:
+            updated_parameters["future_speed_coef"] = 0
+            future_speed = 0
+        else:
+            future_speed, _, _, _ = speed(
+                image_mask,
+                (new_height, new_width),
+                np_moving_vector,
+                parameters,
+            )
+        if (
+            future_array[it % future_array_len]["scene_flag"]
+            and scene_flag
+            and parameters["scene_detection_flag"]
+            and it > changed_flag - (future_array_len - parameters["jump_delay_coef"])
+        ) or it < after_scene_changed:
+            if it > after_scene_changed:
+                after_scene_changed = it + max(parameters["jump_delay_coef"] - 1, 0)
+            mask = future_array[after_scene_changed % future_array_len]["image_mask"]
+            vect = future_array[after_scene_changed % future_array_len]["vect"]
+            updated_parameters["future_speed_coef"] = 0
         start_crop_time = datetime.now()
         img, mask = crop(
             future_array[it % future_array_len]["image"],
             net,
             transform,
             (new_height, new_width),
-            future_array[it % future_array_len]["image_mask"],
-            future_array[it % future_array_len]["vect"],
+            mask,
+            vect,
             future_speed,
             future_array[it % future_array_len]["scene_flag"] and scene_flag,
             updated_parameters,
@@ -279,32 +335,31 @@ def make_videos(
 
         it += 1
 
-    parameters["jump_coef_wrap_size"] = max(len(image), len(image[0]))
-
     for i in range(future_array_len):
         scene_flag = True
-        if i < updated_parameters["jump_delay_coef"]:
-            jump_flag, scene_flag = set_jump_flag(
-                future_array,
-                future_array_len,
-                it,
-                parameters,
-                new_height,
-                new_width,
-                crop_size,
-                image_len,
-            )
-            if jump_flag is False:
-                updated_parameters["jump_coef_wrap_size"] = max(
-                    len(image), len(image[0])
-                )
-        start_crop_time = datetime.now()
-        future_speed, _, _ = speed(
-            future_array[it % future_array_len]["image_mask"],
-            (new_height, new_width),
-            future_array[it % future_array_len]["vect"],
+        jump_flag, scene_flag, move_flag, future_flag = set_jump_flag(
+            future_array,
+            future_array_len,
+            it,
             parameters,
+            new_height,
+            new_width,
+            crop_size,
+            image_len,
+            future_array_len - i,
         )
+        start_crop_time = datetime.now()
+        updated_parameters = deepcopy(parameters)
+        if jump_flag is False:
+            updated_parameters["jump_coef_wrap_size"] = max(len(image), len(image[0]))
+            updated_parameters["scene_detection_flag"] = False
+        if future_flag is False:
+            updated_parameters["future_speed_coef"] = 0
+        if move_flag is False:
+            updated_parameters["constant_speed"] = 0
+            updated_parameters["future_speed_coef"] = 0
+            updated_parameters["prev_speed_coef"] = 0
+
         img, mask = crop(
             future_array[it % future_array_len]["image"],
             net,
@@ -312,9 +367,9 @@ def make_videos(
             (new_height, new_width),
             future_array[it % future_array_len]["image_mask"],
             future_array[it % future_array_len]["vect"],
-            future_speed,
+            0,
             future_array[it % future_array_len]["scene_flag"] and scene_flag,
-            parameters,
+            updated_parameters,
         )
         crop_function_time += (datetime.now() - start_crop_time).seconds * 10**6 + (
             datetime.now() - start_crop_time
