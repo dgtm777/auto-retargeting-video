@@ -5,7 +5,9 @@ from vapoursynth import core
 import vapoursynth as vs
 
 
-def upload_videos(in_filename, in_compare_filename):
+def upload_videos(
+    in_filename, in_compare_filename, scene_detection_parameters=(255, 100)
+):
 
     input_video = core.ffms2.Source(source=in_filename)
 
@@ -17,13 +19,11 @@ def upload_videos(in_filename, in_compare_filename):
         width=input_video.width,
         height=input_video.height,
         format=vs.YUV444P8,
-        # format=vs.RGB24,
     )
     input_video = core.resize.Bicubic(
         clip=input_video,
         width=input_video.width,
         height=input_video.height,
-        # format=vs.YUV444P8,
         format=vs.RGB24,
         matrix_in_s="709",
     )
@@ -33,7 +33,6 @@ def upload_videos(in_filename, in_compare_filename):
             clip=input_compare_video,
             width=input_compare_video.width,
             height=input_compare_video.height,
-            # format=vs.YUV444P8,
             format=vs.RGB24,
             matrix_in_s="709",
         )
@@ -45,7 +44,12 @@ def upload_videos(in_filename, in_compare_filename):
 
     super_video = core.mv.Super(yuv_video)
     video_vector = core.mv.Analyse(super_video)
-    scene_detection = core.mv.SCDetection(yuv_video, video_vector)
+    scene_detection = core.mv.SCDetection(
+        yuv_video,
+        video_vector,
+        scene_detection_parameters[0],
+        scene_detection_parameters[1],
+    )
     return yuv_video, input_video, input_compare_video, video_vector, scene_detection
 
 
