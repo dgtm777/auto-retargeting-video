@@ -11,8 +11,6 @@ l_prev = None
 r_prev = None
 speed_upgrade = 0
 speed_prev = 0
-default_speed = 0.003
-div_mem = 0
 
 
 def speed(mask, crop_size, vect, parameters):
@@ -51,34 +49,58 @@ def speed(mask, crop_size, vect, parameters):
             max_speed = -parameters["constant_speed"]
         else:
             max_speed = 0
-        # max_speed = sign * max(
-        #     abs(max_speed),
-        #     min(default_speed, abs(l_new - l_prev) / len_vect),
-        # )
     flag = False
     if l_prev is not None and (
         (abs(l_new - l_prev) >= parameters["jump_coef_wrap_size"] * (r_new - l_new))
         and abs(l_new - l_prev) >= len_vect * parameters["jump_coef_img_size"]
     ):
         flag = True
-    return max_speed, flag, l_new
+    return max_speed, flag, l_new, sign
 
 
 def find_new_borders(mask_, l_prev, r_prev, crop_size, scale, parameters):
     mask = np.array(mask_, dtype=np.int64)
     deg_mask = mask ** parameters["mask_coef"]
     compress_arr = np.sum(deg_mask, 1)
-    prefix_sum = np.insert(np.cumsum(compress_arr), 0, 0)
-    dif_sum = [
-        prefix_sum[r] - prefix_sum[r - int(crop_size * scale)]
-        for r in range(int(crop_size * scale), len(prefix_sum))
-    ]
+    if parameters["weighted_sum"] is True:
+        prefix_sum = np.insert(
+            np.cumsum(
+                np.hstack(
+                    (
+                        compress_arr[: (int(crop_size * scale - 1)) // 2],
+                        compress_arr,
+                        compress_arr[-(int(crop_size * scale) // 2) :],
+                    )
+                )
+            ),
+            0,
+            0,
+        )
+        dif_sum_help = np.array(
+            [
+                prefix_sum[r] - prefix_sum[r - int(crop_size * scale)]
+                for r in range(int(crop_size * scale), len(prefix_sum))
+            ]
+        )
+        prefix_sum = np.insert(np.cumsum(dif_sum_help), 0, 0)
+        dif_sum = [
+            prefix_sum[r] - prefix_sum[r - int(crop_size * scale)]
+            for r in range(int(crop_size * scale), len(prefix_sum))
+        ]
+    else:
+        prefix_sum = np.insert(np.cumsum(compress_arr), 0, 0)
+        dif_sum = np.array(
+            [
+                prefix_sum[r] - prefix_sum[r - int(crop_size * scale)]
+                for r in range(int(crop_size * scale), len(prefix_sum))
+            ]
+        )
+
     l_new = int(np.argmax(dif_sum) / scale)
     r_new = l_new + crop_size
-    if r_new > len(mask) / scale:
-        r_new = len(mask) / scale
-        l_new = r_new - crop_size
+
     general_sign = None
+
     if l_prev is not None:
         if l_prev == l_new:
             general_sign = 0
@@ -86,6 +108,14 @@ def find_new_borders(mask_, l_prev, r_prev, crop_size, scale, parameters):
             general_sign = (l_new - l_prev) / abs(l_prev - l_new)
         l_new -= int(general_sign * 1 / scale)
         r_new -= int(general_sign * 1 / scale)
+
+    if r_new > len(mask) / scale:
+        r_new = len(mask) / scale
+        l_new = r_new - crop_size
+    if l_new < 0:
+        l_new = 0
+        r_new = crop_size
+
     return int(l_new), int(r_new), prefix_sum, general_sign
 
 
@@ -97,19 +127,13 @@ def count_speed(mask, vect, l_new, r_new, crop_size, future_speed, parameters):
             if (l_new - l_prev) / abs(l_new - l_prev) >= 0:
                 non_zero = np.count_nonzero(vect[l_new:r_new] > 128)
                 max_speed = max(vect.max() - 128, 0)
-                # sign = 1
             else:
                 non_zero = np.count_nonzero(vect[l_new:r_new] < 128)
                 max_speed = min(vect.min() - 128, 0)
-                # sign = -1
             if non_zero > len(vect) * parameters["speed_error"]:
                 speed_upgrade = max_speed / parameters["speed_coef"]
             else:
                 speed_upgrade = 0
-            # speed_upgrade = sign * max(
-            #     abs(speed_upgrade),
-            #     min(default_speed, abs(l_new - l_prev) / len(vect)),
-            # )
     else:
         if (l_prev is None) or l_new - l_prev == 0:
             speed_upgrade = 0
@@ -117,7 +141,6 @@ def count_speed(mask, vect, l_new, r_new, crop_size, future_speed, parameters):
             speed_upgrade = parameters["constant_speed"]
         else:
             speed_upgrade = -parameters["constant_speed"]
-    # print(speed_upgrade, future_speed, speed_prev)
     speed_upgrade = (1 - parameters["future_speed_coef"]) * speed_upgrade + parameters[
         "future_speed_coef"
     ] * future_speed
@@ -152,8 +175,16 @@ def move_borders(
                 >= parameters["jump_coef_wrap_size"] * (r_new - l_new)
             )
             and (
-                (prefix_sum[int(r_new * scale)] - prefix_sum[int(l_new * scale)])
-                - ((prefix_sum[int(r_prev * scale)] - prefix_sum[int(l_prev * scale)]))
+                (
+                    prefix_sum[min(int(r_new * scale), len(prefix_sum) - 1)]
+                    - prefix_sum[min(int(l_new * scale), len(prefix_sum) - 1)]
+                )
+                - (
+                    (
+                        prefix_sum[min(int(r_prev * scale), len(prefix_sum) - 1)]
+                        - prefix_sum[min(int(l_prev * scale), len(prefix_sum) - 1)]
+                    )
+                )
                 >= (
                     parameters["jump_coef_mask_value"] ** parameters["mask_coef"]
                     * crop_size
@@ -167,15 +198,17 @@ def move_borders(
         r_prev = r_new
         if scene_change_flag:
             speed_prev = 0
-            div_mem = 0
-        # print(scene_change_flag)
     elif l_prev is not None:
-        # div = int(len(mask) / scale * speed_upgrade + div_mem)
-        # div_mem = len(mask) / scale * speed_upgrade + div_mem - div
-        div = math.ceil(len(mask) / scale * speed_upgrade + div_mem)
+        div = math.ceil(len(mask) / scale * speed_upgrade)
         l_prev += div
         r_prev += div
-    return l_prev, r_prev
+        if l_prev < 0:
+            l_prev = 0
+            r_prev = l_prev + crop_size
+        if r_prev > len(mask) / scale:
+            r_prev = len(mask) / scale
+            l_prev = r_prev - crop_size
+    return int(l_prev), int(r_prev)
 
 
 def check_border(
@@ -249,7 +282,6 @@ def crop(
             parameters,
         )
         h, b = 0, len(my_img[0])
-
     ans = copy(my_img[:, h:b, l:r])
 
     my_img[0, max(h - 1, 0) : min(len(my_img[0]), h + 1), :] = 255
