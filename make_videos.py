@@ -123,6 +123,7 @@ def make_videos(
     weighted_sum=True,
     out_filename_wrap=None,
     out_filename_both=None,
+    out_filename_both_mask=None,
     out_filename_mask=None,
     in_compare_filename=None,
     out_compare_filename=None,
@@ -138,7 +139,7 @@ def make_videos(
     crop_functions.cache_vect_max = Cache(1000)
     crop_functions.cache_vect_min = Cache(1000)
 
-    # make_mask_time = 0
+    make_mask_time = 0
     # crop_function_time = 0
     # processes_time = 0
     # future_time = 0
@@ -176,6 +177,7 @@ def make_videos(
             "weighted_sum": weighted_sum,
             "out_filename_wrap": out_filename_wrap,
             "out_filename_both": out_filename_both,
+            "out_filename_both_mask": out_filename_both_mask,
             "out_filename_mask": out_filename_mask,
             "in_compare_filename": in_compare_filename,
             "out_compare_filename": out_compare_filename,
@@ -244,6 +246,7 @@ def make_videos(
         out_filename,
         out_filename_wrap,
         out_filename_both,
+        out_filename_both_mask,
         out_filename_mask,
         out_compare_filename,
         out_compare_mask_filename,
@@ -270,11 +273,11 @@ def make_videos(
         # to_numpy_time += (datetime.now() - start_to_numpy_time).seconds * 10**6 + (
         #     datetime.now() - start_to_numpy_time
         # ).microseconds
-        # make_mask_start_time = datetime.now()
+        make_mask_start_time = datetime.now()
         image_mask = make_mask(image, net)
-        # make_mask_time += (datetime.now() - make_mask_start_time).seconds * 10**6 + (
-        #     datetime.now() - make_mask_start_time
-        # ).microseconds
+        make_mask_time += (datetime.now() - make_mask_start_time).seconds * 10**6 + (
+            datetime.now() - make_mask_start_time
+        ).microseconds
         # start_to_numpy_time = datetime.now()
         np_moving_vector = np.array(
             [np.array(cur_col) for cur_col in cur_moving_vector]
@@ -387,6 +390,7 @@ def make_videos(
             out_filename,
             out_filename_wrap,
             out_filename_both,
+            out_filename_both_mask,
             out_filename_mask,
             out_compare_filename,
             out_compare_mask_filename,
@@ -460,6 +464,7 @@ def make_videos(
             out_filename,
             out_filename_wrap,
             out_filename_both,
+            out_filename_both_mask,
             out_filename_mask,
             out_compare_filename,
             out_compare_mask_filename,
@@ -472,8 +477,8 @@ def make_videos(
     #     it - future_array_len,
     # )
     # print("All work :", (datetime.now() - whole_time).total_seconds())
-    # print(f"make_mask : {make_mask_time / 10**6}")
-    # print(f"make_mask_ones : {make_mask_time / 10**6 / (it-future_array_len)}")
+    print(f"make_mask : {make_mask_time / 10**6}")
+    print(f"make_mask_ones : {make_mask_time / 10**6 / (it-future_array_len)}")
     # print(f"crop_function : {crop_function_time / 10**6}")
     # print(f"processes : {processes_time / 10**6}")
     # print(f"future : {future_time / 10**6}")

@@ -37,7 +37,7 @@ def upload_videos(
             matrix_in_s="709",
         )
         input_compare_video = avs_subtitle(
-            input_compare_video, in_compare_filename.split("/")[-2]
+            input_compare_video, "weighted sum"  # in_compare_filename.split("/")[-2]
         )
     else:
         input_compare_video = input_video
@@ -97,6 +97,7 @@ def make_processes(
     out_filename,
     out_filename_wrap=None,
     out_filename_both=None,
+    out_filename_both_mask=None,
     out_filename_mask=None,
     out_compare_filename=None,
     out_compare_mask_filename=None,
@@ -140,6 +141,20 @@ def make_processes(
             .filter("setpts", f"N/({fps}*TB)+STARTPTS")
             .filter("fps", fps=fps, round="up")
             .output(out_filename_both, preset="ultrafast", pix_fmt="yuv420p")
+            .overwrite_output()
+            .run_async(pipe_stdin=True)
+        )
+    if out_filename_both_mask is not None:
+        processes[out_filename_both_mask] = (
+            ffmpeg.input(
+                "pipe:",
+                format="rawvideo",
+                pix_fmt="rgb24",
+                s="{}x{}".format(new_width + add_width, new_height + add_height),
+            )
+            .filter("setpts", f"N/({fps}*TB)+STARTPTS")
+            .filter("fps", fps=fps, round="up")
+            .output(out_filename_both_mask, preset="ultrafast", pix_fmt="yuv420p")
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
@@ -204,6 +219,7 @@ def set_processes(
     out_filename,
     out_filename_wrap=None,
     out_filename_both=None,
+    out_filename_both_mask=None,
     out_filename_mask=None,
     out_compare_filename=None,
     out_compare_mask_filename=None,
@@ -214,6 +230,10 @@ def set_processes(
     if out_filename_both in processes:
         processes[out_filename_both].stdin.write(
             func((img[0], img[1])).astype(np.uint8).tobytes()
+        )
+    if out_filename_both_mask in processes:
+        processes[out_filename_both_mask].stdin.write(
+            func((mask[0], img[1])).astype(np.uint8).tobytes()
         )
     if out_filename_mask in processes:
         processes[out_filename_mask].stdin.write(
@@ -234,6 +254,16 @@ def set_processes(
             func((img[1], compare_image)).astype(np.uint8).tobytes()
         )
     if out_compare_mask_filename in processes:
+        compare_image = np.stack(
+            [np.array(cur_col) for cur_col in cur_compare_image]
+        ).astype(np.uint8)
+        compare_image = np.moveaxis(
+            compare_image,
+            0,
+            -1,
+        )
+        compare_image = check_compare_shape(compare_image, img, func)
+
         processes[out_compare_mask_filename].stdin.write(
             func((img[0], mask[0], img[1], compare_image)).astype(np.uint8).tobytes()
         )

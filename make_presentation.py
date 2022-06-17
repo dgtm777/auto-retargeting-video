@@ -8,6 +8,7 @@ from vapoursynth import core
 import vapoursynth as vs
 import ffmpeg
 from make_videos import make_videos
+import cv2
 
 
 # core.std.LoadPlugin(
@@ -19,13 +20,14 @@ from make_videos import make_videos
 # )
 
 
-def frame_to_numpy(frame):
+def frame_to_numpy(frame, shape):
     image = np.stack([np.array(cur_col) for cur_col in frame]).astype(np.uint8)
     image = np.moveaxis(
         image,
         0,
         -1,
     )
+    image = cv2.resize(image, dsize=shape)
     return image
 
 
@@ -48,14 +50,18 @@ def make_presentation(
         format=vs.RGB24,
         matrix_in_s="709",
     )
-    height = my_video.height
-    width = my_video.width
+    if comp_video.width > my_video.width or comp_video.height > my_video.height:
+        shape = (comp_video.width, comp_video.height)
+    else:
+        shape = (my_video.width, my_video.height)
+    height = shape[1]
+    width = shape[0]
     if my_video.height <= my_video.width:
         func = np.vstack
-        height += comp_video.height
+        height += shape[1]
     else:
         func = np.hstack
-        width += comp_video.width
+        width += shape[0]
     comp = (comp_video, labeles[1])
     my = (my_video, labeles[0])
     sequences = random.choice([[comp, my], [my, comp]])
@@ -100,12 +106,17 @@ def make_presentation(
         subtitled_seq[1].frames(),
     ):
         process1.stdin.write(
-            func((frame_to_numpy(left), frame_to_numpy(right)))
+            func((frame_to_numpy(left, shape), frame_to_numpy(right, shape)))
             .astype(np.uint8)
             .tobytes()
         )
         process2.stdin.write(
-            func((frame_to_numpy(left_labeled), frame_to_numpy(right_labeled)))
+            func(
+                (
+                    frame_to_numpy(left_labeled, shape),
+                    frame_to_numpy(right_labeled, shape),
+                )
+            )
             .astype(np.uint8)
             .tobytes()
         )
@@ -115,24 +126,51 @@ def make_presentation(
     process2.wait()
 
 
-# for in_filename in all_videos:
-#     print(in_filename)
-#     make_videos(
-#         os.path.join(root_dir, "videos/" + in_filename + ".mp4"),
-#         os.path.join(
-#             root_dir,
-#             "videos/" + in_filename + "_cur.mp4",
-#         ),
-#     )
-#     make_presentation(
-#         os.path.join(root_dir, "videos/" + in_filename + "_cur.mp4"),
-#         os.path.join(root_dir, "videos/premiere/" + in_filename + ".mp4"),
-#         os.path.join(root_dir, "videos/presentation/premiere/" + in_filename + ".mp4"),
-#         os.path.join(
-#             root_dir, "videos/presentation/premiere/" + in_filename + "_labeled.mp4"
-#         ),
-#         ("mine", "premiere"),
-#     )
+comp_names = [
+    # "premiere",
+    # "multimedia",
+    "google",
+]
+
+# root_dir_cur = "/media/daria/5AAE-51EA"
+
+# for comp in comp_names:
+#     for in_filename in all_videos:
+#         print(in_filename)
+#         # comp_video = core.ffms2.Source(
+#         #     os.path.join(root_dir_cur, "videos/" + comp + "/" + in_filename + ".mp4"),
+#         # )
+#         # make_videos(
+#         #     os.path.join(root_dir_cur, "videos/" + in_filename + ".mp4"),
+#         #     os.path.join(
+#         #         root_dir_cur,
+#         #         "videos/" + in_filename + "_cur.mp4",
+#         #     ),
+#         #     # ratio=(comp_video.height, comp_video.width),
+#         # )
+#         make_presentation(
+#             os.path.join(root_dir_cur, "videos/" + in_filename + "_cur.mp4"),
+#             os.path.join(root_dir_cur, "videos/" + comp + "/" + in_filename + ".mp4"),
+#             os.path.join(
+#                 root_dir_cur, "videos/presentation/" + comp + "/" + in_filename + ".mp4"
+#             ),
+#             os.path.join(
+#                 root_dir_cur,
+#                 "videos/presentation/" + comp + "/" + in_filename + "_labeled.mp4",
+#             ),
+#             ("mine", comp),
+#         )
+
+make_presentation(
+    os.path.join(root_dir, "videos/Dogs_cur.mp4"),
+    os.path.join(root_dir, "videos/Dogs_future_speed_cur.mp4"),
+    os.path.join(root_dir, "videos/Dogs_present.mp4"),
+    os.path.join(
+        root_dir,
+        "videos/Dogs_labeled.mp4",
+    ),
+    ("С учетом будущей скорости", "Без учета будущей скорости"),
+)
 
 videos = [
     # "Sherbakov",

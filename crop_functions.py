@@ -329,13 +329,25 @@ def crop(
             parameters,
         )
         l, r = 0, image_size_0
+        ans = copy(my_img[:, h:b, l:r])
         if (
             parameters["out_filename_wrap"] is not None
             or parameters["out_filename_both"] is not None
             or parameters["out_filename_mask"] is not None
         ):
-            my_img[0, max(h - 3, 0) : h, :] = 255
-            my_img[0, b : min(image_size, b + 3), :] = 255
+            my_img[0, max(h - 6, 0) : h, :] = 255
+            my_img[0, b : min(image_size, b + 6), :] = 255
+            my_img[1, max(h - 6, 0) : h, :] = 0
+            my_img[1, b : min(image_size, b + 6), :] = 0
+            my_img[2, max(h - 6, 0) : h, :] = 0
+            my_img[2, b : min(image_size, b + 6), :] = 0
+
+            my_img[2, h:b, l : min(l + 6, r)] = 255
+            my_img[2, h:b, max(l, r - 6) : r] = 255
+            # my_img[1, h:b, l : min(l + 6, r)] = 0
+            # my_img[1, h:b, max(l, r - 6) : r] = 0
+            # my_img[2, h:b, l : min(l + 6, r)] = 0
+            # my_img[2, h:b, max(l, r - 6) : r] = 0
     else:
         l, r = check_border(
             cur_id,
@@ -348,14 +360,25 @@ def crop(
             parameters,
         )
         h, b = 0, image_size
+        ans = copy(my_img[:, h:b, l:r])
         if (
             parameters["out_filename_wrap"] is not None
             or parameters["out_filename_both"] is not None
             or parameters["out_filename_mask"] is not None
         ):
-            my_img[0, :, max(l - 3, 0) : l] = 255
-            my_img[0, :, r : min(image_size_0, r + 3)] = 255
-    ans = copy(my_img[:, h:b, l:r])
+            my_img[0, :, max(l - 6, 0) : l] = 255
+            my_img[0, :, r : min(image_size_0, r + 6)] = 255
+            my_img[1, :, max(l - 6, 0) : l] = 0
+            my_img[1, :, r : min(image_size_0, r + 6)] = 0
+            my_img[2, :, max(l - 6, 0) : l] = 0
+            my_img[2, :, r : min(image_size_0, r + 6)] = 0
+
+            my_img[2, h : max(h + 6, b), l:r] = 255
+            my_img[2, min(h, b - 6) : b, l:r] = 255
+            # my_img[1, h : max(h + 6, b), l:r] = 0
+            # my_img[1, min(h, b - 6) : b, l:r] = 0
+            # my_img[2, h : max(h + 6, b), l:r] = 0
+            # my_img[2, min(h, b - 6) : b, l:r] = 0
     ans = np.moveaxis(ans, 0, 2)
     my_img = np.moveaxis(my_img, 0, 2)
     mask_numpy = None
@@ -363,9 +386,13 @@ def crop(
     if (
         parameters["out_filename_mask"] is not None
         or parameters["out_compare_mask_filename"] is not None
+        or parameters["out_filename_both_mask"] is not None
     ):
-        out_mask = np.array([mask for i in range(3)], dtype=np.int64)
+        mask = np.array(mask, dtype=np.int64)
+        deg_mask = mask ** parameters["mask_coef"]
+        out_mask = np.array([deg_mask for i in range(3)], dtype=np.int64)
         mask_numpy = np.moveaxis(out_mask, 0, 2)
+        mask_numpy = mask_numpy / mask_numpy.max() * 255
 
         mask_numpy = np.asarray(
             transforms.Resize((len(my_img), len(my_img[0])))(
@@ -376,10 +403,11 @@ def crop(
 
         croped_mask = copy(mask_numpy[h:b, l:r, :])
 
+        mask_numpy[h:b, l:r, 2] = 255
         for i, val in enumerate([255, 0, 0]):
-            mask_numpy[max(h - 1, 0) : min(len(mask_numpy), h + 1), :, i] = val
-            mask_numpy[max(b - 1, 0) : min(len(mask_numpy), b + 1), :, i] = val
-            mask_numpy[:, max(l - 1, 0) : min(len(mask_numpy[0]), l + 1), i] = val
-            mask_numpy[:, max(r - 1, 0) : min(len(mask_numpy[0]), r + 1), i] = val
+            mask_numpy[max(h - 6, 0) : min(len(mask_numpy), h + 6), l:r, i] = val
+            mask_numpy[max(b - 6, 0) : min(len(mask_numpy), b + 6), l:r, i] = val
+            mask_numpy[h:b, max(l - 6, 0) : min(len(mask_numpy[0]), l + 6), i] = val
+            mask_numpy[h:b, max(r - 6, 0) : min(len(mask_numpy[0]), r + 6), i] = val
 
     return (my_img, ans), (mask_numpy, croped_mask)
