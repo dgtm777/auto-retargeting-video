@@ -2,3 +2,6 @@ videos/
 __pycache__/
 scene.mp4
 encoded.mkv
+.make_google.sh.swn
+.make_google.sh.swo
+.make_google.sh.swp
