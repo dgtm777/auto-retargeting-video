@@ -219,45 +219,45 @@ def read_flags(
 
 
 if __name__ == "__main__":
-    # read_flags()
-    for in_filename in all_videos:
-        print("\n\n\n", in_filename, "\n\n\n")
-        start = datetime.now()
-        make_videos(
-            os.path.join(root_dir, "videos/" + in_filename + ".mp4"),
-            os.path.join(root_dir, "videos/" + in_filename + "_future_speed_cur.mp4"),
-            # in_compare_filename=os.path.join(
-            #     root_dir, "videos/premiere/" + in_filename + ".mp4"
-            # ),
-            # out_filename_wrap=os.path.join(
-            #     root_dir, "videos/" + in_filename + "_wrap.mp4"
-            # ),
-            # out_filename_both=os.path.join(
-            #     root_dir, "videos/" + in_filename + "_both.mp4"
-            # ),
-            # out_filename_both_mask=os.path.join(
-            #     root_dir, "videos/" + in_filename + "_mask_coef_both.mp4"
-            # ),
-            # out_filename_mask=os.path.join(
-            #     root_dir, "videos/" + in_filename + "_mask.mp4"
-            # ),
-            # out_compare_filename=os.path.join(
-            #     root_dir, "videos/" + in_filename + "_comp_both_mask_coef.mp4"
-            # ),
-            # out_compare_mask_filename=os.path.join(
-            #     root_dir, "videos/" + in_filename + "_mask.mp4"
-            # ),
-            # weighted_sum=False,
-            # mask_coef=1,
-            # jump_coef_img_size=0,
-            # jump_coef_wrap_size=0,
-            # jump_coef_mask_value=0,
-            # jump_delay_coef=0,
-            # moving_available_coef=0,
-            # speed_error=0,
-            # fps_coef=0,
-            # prev_speed_coef=0,
-            future_speed_coef=0,
-            # scene_detection_parameters=(0, 0),
-        )
-        print(datetime.now() - start)
+    read_flags()
+#     for in_filename in all_videos:
+#         print("\n\n\n", in_filename, "\n\n\n")
+#         start = datetime.now()
+#         make_videos(
+#             os.path.join(root_dir, "videos/" + in_filename + ".mp4"),
+#             os.path.join(root_dir, "videos/" + in_filename + "_future_speed_cur.mp4"),
+#             # in_compare_filename=os.path.join(
+#             #     root_dir, "videos/premiere/" + in_filename + ".mp4"
+#             # ),
+#             # out_filename_wrap=os.path.join(
+#             #     root_dir, "videos/" + in_filename + "_wrap.mp4"
+#             # ),
+#             # out_filename_both=os.path.join(
+#             #     root_dir, "videos/" + in_filename + "_both.mp4"
+#             # ),
+#             # out_filename_both_mask=os.path.join(
+#             #     root_dir, "videos/" + in_filename + "_mask_coef_both.mp4"
+#             # ),
+#             # out_filename_mask=os.path.join(
+#             #     root_dir, "videos/" + in_filename + "_mask.mp4"
+#             # ),
+#             # out_compare_filename=os.path.join(
+#             #     root_dir, "videos/" + in_filename + "_comp_both_mask_coef.mp4"
+#             # ),
+#             # out_compare_mask_filename=os.path.join(
+#             #     root_dir, "videos/" + in_filename + "_mask.mp4"
+#             # ),
+#             # weighted_sum=False,
+#             # mask_coef=1,
+#             # jump_coef_img_size=0,
+#             # jump_coef_wrap_size=0,
+#             # jump_coef_mask_value=0,
+#             # jump_delay_coef=0,
+#             # moving_available_coef=0,
+#             # speed_error=0,
+#             # fps_coef=0,
+#             # prev_speed_coef=0,
+#             future_speed_coef=0,
+#             # scene_detection_parameters=(0, 0),
+#         )
+#         print(datetime.now() - start)
