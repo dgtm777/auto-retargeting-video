@@ -6,8 +6,6 @@ import torchvision.transforms as transforms
 from PIL import Image
 import math
 
-# from cachetools import cached, LRUCache
-# from cachetools.keys import hashkey
 from cache import Cache
 
 
@@ -77,35 +75,32 @@ def speed(cur_id, mask, crop_size, vect, parameters):
     return max_speed, flag, l_new, sign
 
 
-# @cached(
-#     cache=LRUCache(maxsize=1000),
-#     key=lambda vect, cur_id: hashkey(cur_id),
-# )
 def max_vect(cur_id, vect):
     ans = vect.max()
     cache_vect_max.put(cur_id, ans)
     return ans
 
 
-# @cached(
-#     cache=LRUCache(maxsize=1000),
-#     key=lambda vect, cur_id: hashkey(cur_id),
-# )
 def min_vect(cur_id, vect):
     ans = vect.min()
     cache_vect_min.put(cur_id, ans)
     return ans
 
 
-# @cached(
-#     cache=LRUCache(maxsize=1000),
-#     key=lambda mask_, crop_size, scale, parameters, cur_id: hashkey(cur_id),
-# )
 def raw_window_borders(cur_id, mask_, crop_size, scale, parameters):
+    """
+    Функция, определяющая первоначальное положение окна обрезки.
+    Без учета положения окна обрезки для предыдущих кадров.
+    """
     mask = np.array(mask_, dtype=np.int64)
     deg_mask = mask ** parameters["mask_coef"]
+    # Возводим значения карты значимости в степень,
+    # чтобы увеличить разницу между высокой вероятностью и низкой
     compress_arr = np.sum(deg_mask, 1)
     if parameters["weighted_sum"] is True:
+        # чтобы вычислить взвешенные суммы (вероятности, распложенные ближе
+        # к центру окна обрезки берутся с большим коэффициентом)
+        # сумма вероятностей в окне обрезки вычисляется последовательно два раза
         prefix_sum = np.insert(
             np.cumsum(
                 np.hstack(
@@ -145,6 +140,10 @@ def raw_window_borders(cur_id, mask_, crop_size, scale, parameters):
 
 
 def find_new_borders(cur_id, mask_, l_prev, r_prev, crop_size, scale, parameters):
+    """
+    Так как окно обрезки вычисляется на основе карты значимости размером 64x64,
+    сдвигаем окно обрезки на погрешность в сторону предыдущего положения окна обрезки
+    """
     l_new, r_new, prefix_sum = cache_borders.get_from_cache(
         cur_id, raw_window_borders, mask_, crop_size, scale, parameters
     )
@@ -168,8 +167,12 @@ def find_new_borders(cur_id, mask_, l_prev, r_prev, crop_size, scale, parameters
 
 
 def count_speed(cur_id, mask, vect, l_new, r_new, crop_size, future_speed, parameters):
+    """
+    Выяисляется скорость окна обрезки
+    """
     global l_prev, r_prev, speed_upgrade, speed_prev
     speed_upgrade = 0
+    # получаем скорость объекта в кадре
     if parameters["constant_speed"] is None:
         if (l_prev is not None) and l_new - l_prev != 0:
             if (l_new - l_prev) / abs(l_new - l_prev) >= 0:
@@ -195,11 +198,12 @@ def count_speed(cur_id, mask, vect, l_new, r_new, crop_size, future_speed, param
             speed_upgrade = -parameters["constant_speed"]
     speed_upgrade = (1 - parameters["future_speed_coef"]) * speed_upgrade + parameters[
         "future_speed_coef"
-    ] * future_speed
+    ] * future_speed  # Смешиваем текущую скорость и скорость в некотором кадре в будущем.
+    # (Для того, чтобы успевать реагировать на изменения в движении объекта
     speed_upgrade = (
         speed_upgrade * (1 - parameters["prev_speed_coef"])
         + speed_prev * parameters["prev_speed_coef"]
-    )
+    )  # Применяем метод моментов для стабилизации движения окна обрезки
     speed_prev = speed_upgrade
     return speed_upgrade
 
@@ -216,6 +220,9 @@ def move_borders(
     scale,
     parameters,
 ):
+    """
+    Определяем политику движения окна обрезки (плавное движение или скачок между сценами)
+    """
     global l_prev, r_prev, speed_prev, div_mem, jump_delay
     len_mask = len(mask)
     image_size = len_mask / scale
@@ -294,7 +301,9 @@ def sigmoid(x):
 
 
 def make_mask(img, net):
-    # sig = torch.nn.Sigmoid()
+    """
+    Получение карты значимости
+    """
     mask = net(torch.unsqueeze(transform["test"]["images"](img), 0))[0].detach().numpy()
     mask = sigmoid(mask[0]) * 255
     return mask
@@ -312,6 +321,9 @@ def crop(
     scene_change_flag,
     parameters,
 ):
+    """
+    Функция обрезает кадр видео и делает все запрошенные визуализации
+    """
     my_img = np.array(img.transpose(2, 0, 1))
     image_size = len(my_img[0])
     mask_size = len(mask)
@@ -344,10 +356,6 @@ def crop(
 
             my_img[2, h:b, l : min(l + 6, r)] = 255
             my_img[2, h:b, max(l, r - 6) : r] = 255
-            # my_img[1, h:b, l : min(l + 6, r)] = 0
-            # my_img[1, h:b, max(l, r - 6) : r] = 0
-            # my_img[2, h:b, l : min(l + 6, r)] = 0
-            # my_img[2, h:b, max(l, r - 6) : r] = 0
     else:
         l, r = check_border(
             cur_id,
@@ -375,10 +383,6 @@ def crop(
 
             my_img[2, h : max(h + 6, b), l:r] = 255
             my_img[2, min(h, b - 6) : b, l:r] = 255
-            # my_img[1, h : max(h + 6, b), l:r] = 0
-            # my_img[1, min(h, b - 6) : b, l:r] = 0
-            # my_img[2, h : max(h + 6, b), l:r] = 0
-            # my_img[2, min(h, b - 6) : b, l:r] = 0
     ans = np.moveaxis(ans, 0, 2)
     my_img = np.moveaxis(my_img, 0, 2)
     mask_numpy = None

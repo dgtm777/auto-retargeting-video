@@ -36,7 +36,7 @@ transform = {
 }
 root_dir = os.path.dirname(__file__)
 
-all_videos = [
+all_videos = [  # list of videos that will be processed
     "Fits",
     "Dogs",
     "Domino",

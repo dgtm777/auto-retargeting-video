@@ -88,7 +88,7 @@ from datetime import datetime
     help="parameter for MVTools  MSCDetection",
 )
 @click.option(
-    "--scene_detection_thSCD1",
+    "--scene_detection_thscd1",
     default=100,
     type=click.IntRange(min=0),
     help="parameter for MVTools  MSCDetection",
@@ -175,7 +175,7 @@ def read_flags(
     default_speed,
     scene_detection_flag,
     scene_detection_ysc,
-    scene_detection_thSCD1,
+    scene_detection_thscd1,
     speed_coef,
     fps_coef,
     future_speed_coef,
@@ -205,7 +205,7 @@ def read_flags(
         jump_delay_coef=jump_delay_coef,
         fps_coef=fps_coef,
         scene_detection_flag=scene_detection_flag,
-        scene_detection_parameters=(scene_detection_ysc, scene_detection_thSCD1),
+        scene_detection_parameters=(scene_detection_ysc, scene_detection_thscd1),
         out_filename_wrap=wrapper,
         out_filename_both=compare,
         out_filename_both_mask=compare_with_mask,
@@ -222,42 +222,7 @@ if __name__ == "__main__":
     read_flags()
 #     for in_filename in all_videos:
 #         print("\n\n\n", in_filename, "\n\n\n")
-#         start = datetime.now()
 #         make_videos(
 #             os.path.join(root_dir, "videos/" + in_filename + ".mp4"),
-#             os.path.join(root_dir, "videos/" + in_filename + "_future_speed_cur.mp4"),
-#             # in_compare_filename=os.path.join(
-#             #     root_dir, "videos/premiere/" + in_filename + ".mp4"
-#             # ),
-#             # out_filename_wrap=os.path.join(
-#             #     root_dir, "videos/" + in_filename + "_wrap.mp4"
-#             # ),
-#             # out_filename_both=os.path.join(
-#             #     root_dir, "videos/" + in_filename + "_both.mp4"
-#             # ),
-#             # out_filename_both_mask=os.path.join(
-#             #     root_dir, "videos/" + in_filename + "_mask_coef_both.mp4"
-#             # ),
-#             # out_filename_mask=os.path.join(
-#             #     root_dir, "videos/" + in_filename + "_mask.mp4"
-#             # ),
-#             # out_compare_filename=os.path.join(
-#             #     root_dir, "videos/" + in_filename + "_comp_both_mask_coef.mp4"
-#             # ),
-#             # out_compare_mask_filename=os.path.join(
-#             #     root_dir, "videos/" + in_filename + "_mask.mp4"
-#             # ),
-#             # weighted_sum=False,
-#             # mask_coef=1,
-#             # jump_coef_img_size=0,
-#             # jump_coef_wrap_size=0,
-#             # jump_coef_mask_value=0,
-#             # jump_delay_coef=0,
-#             # moving_available_coef=0,
-#             # speed_error=0,
-#             # fps_coef=0,
-#             # prev_speed_coef=0,
-#             future_speed_coef=0,
-#             # scene_detection_parameters=(0, 0),
+#             os.path.join(root_dir, "videos/" + in_filename + "_result.mp4"),
 #         )
-#         print(datetime.now() - start)

@@ -34,6 +34,9 @@ def frame_to_numpy(frame, shape):
 def make_presentation(
     my_filename, premier_filename, out_filename_secret, out_filename_labeled, labeles
 ):
+    """
+    Функция для сравнения разных вариаций изменения соотношения сторон видео
+    """
     comp_video = core.ffms2.Source(source=premier_filename)
     my_video = core.ffms2.Source(source=my_filename)
     comp_video = core.resize.Bicubic(
@@ -126,6 +129,7 @@ def make_presentation(
     process2.wait()
 
 
+# сравнение с альтернативными алгоритмами изменения соотношения сторон видео
 comp_names = [
     # "premiere",
     # "multimedia",
@@ -161,16 +165,6 @@ comp_names = [
 #             ("mine", comp),
 #         )
 
-make_presentation(
-    os.path.join(root_dir, "videos/Dogs_cur.mp4"),
-    os.path.join(root_dir, "videos/Dogs_future_speed_cur.mp4"),
-    os.path.join(root_dir, "videos/Dogs_present.mp4"),
-    os.path.join(
-        root_dir,
-        "videos/Dogs_labeled.mp4",
-    ),
-    ("С учетом будущей скорости", "Без учета будущей скорости"),
-)
 
 videos = [
     # "Sherbakov",
@@ -347,6 +341,7 @@ modes = [
     # ),
 ]
 
+# Сравнение разных вариаций работы алгоритма
 for place, labeles, flags in modes:
     print(place)
     for in_filename in videos:
@@ -389,6 +384,7 @@ for place, labeles, flags in modes:
             )
 
 
+# Сравнения работы алгоритма при фиксированной и адаптивной скорости движения окна обрезки
 place = "speed/"
 names = [
     # ("Denka1", "_0.01"),

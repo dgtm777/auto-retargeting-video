@@ -2,6 +2,10 @@ from collections import OrderedDict
 
 
 class Cache:
+    """
+    Класс для кэширования положения окна обрезки и скорости объекта в кадре
+    """
+
     def __init__(self, size=100000):
         self.max_size = size
         self.cache = OrderedDict()

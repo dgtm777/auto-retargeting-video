@@ -5,7 +5,7 @@ import os
 
 def my_upload():
     """
-    функция, загружающая данные о последнем сохранении с диска
+    Функция, загружающая нейронную сеть
     """
     filename_path = os.path.join(root_dir, "model/best_model_cpu.pkl")
     a_file = open(

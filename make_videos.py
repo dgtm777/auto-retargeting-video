@@ -46,6 +46,11 @@ def set_jump_flag(
     image_len,
     max_iteration,
 ):
+    """
+    Функция для определения политики движения окна обрезки (профилактика ложных сцен) и
+    сглаживания движения окна обрезки (запрещает резкие изменения в направлении движения
+    окна обрезки).
+    """
     jump_flag = True
     scene_flag = True
     move_flag = True
@@ -69,13 +74,10 @@ def set_jump_flag(
             parameters,
         )
         if i == 0:
-            # mem_sign = sign
             move_flag_cur = sign
-        # elif sign != mem_sign and i < parameters["moving_available_coef"]:
         elif sign != move_flag_cur and i < parameters["moving_available_coef"]:
             move_flag_cur = False
         elif (
-            # sign == mem_sign
             sign == move_flag_cur
             and i < parameters["moving_available_coef"]
             and move_flag_cur is False
@@ -104,8 +106,7 @@ def set_jump_flag(
 def make_videos(
     in_filename,
     out_filename,
-    ratio=None,
-    # ratio,
+    ratio=(1, 1),
     constant_speed=None,
     speed_error=constants.speed_error,
     mask_coef=constants.mask_coef,
@@ -129,6 +130,9 @@ def make_videos(
     out_compare_filename=None,
     out_compare_mask_filename=None,
 ):
+    """
+    Функция, проходящая по всем кадрам и запускающая их обработку
+    """
     global global_id
     global_id = 0
     crop_functions.l_prev = None
@@ -140,12 +144,7 @@ def make_videos(
     crop_functions.cache_vect_min = Cache(1000)
 
     make_mask_time = 0
-    # crop_function_time = 0
-    # processes_time = 0
-    # future_time = 0
-    # to_numpy_time = 0
-    # whole_time = datetime.now()
-    # start_processes_time = datetime.now()
+
     (
         yuv_video,
         input_video,
@@ -153,10 +152,6 @@ def make_videos(
         video_vector,
         scene_detection_video,
     ) = upload_videos(in_filename, in_compare_filename, scene_detection_parameters)
-    # processes_time += (datetime.now() - start_processes_time).seconds * 10**6 + (
-    #     datetime.now() - start_processes_time
-    # ).microseconds
-
     fps = float(yuv_video.fps)
 
     parameters = dict(
@@ -186,14 +181,6 @@ def make_videos(
     )
     height = yuv_video.height
     width = yuv_video.width
-    if ratio is None:
-        if height > width:
-            # ratio = (8, 12)
-            ratio = (2, 3)
-        else:
-            # ratio = (12, 8)
-            ratio = (3, 2)
-
     new_height = height
     new_width = width
     k = ratio[0] * width / ratio[1] / height
@@ -203,17 +190,14 @@ def make_videos(
     coef_v = 1
     coef_h = 1
 
+    # Определяем, как будем обрезать кадры (по вертикали или горизонтали)
     if k < 1:
         new_height = int(height * k)
         add_height = height
         crop_size = new_height
         func = np.vstack
         coef_h = 2
-        # start_processes_time = datetime.now()
         speed_video = core.mv.Mask(yuv_video, video_vector, kind=4)
-        # processes_time += (datetime.now() - start_processes_time).seconds * 10**6 + (
-        #     datetime.now() - start_processes_time
-        # ).microseconds
         image_len = height
     else:
         new_width = int(width / k)
@@ -221,18 +205,14 @@ def make_videos(
         func = np.hstack
         crop_size = new_width
         coef_v = 2
-        # start_processes_time = datetime.now()
         speed_video = core.mv.Mask(yuv_video, video_vector, kind=3)
-        # processes_time += (datetime.now() - start_processes_time).seconds * 10**6 + (
-        #     datetime.now() - start_processes_time
-        # ).microseconds
         image_len = width
 
     if new_height % 2 == 1:
         new_height -= 1
     if new_width % 2 == 1:
         new_width -= 1
-    # start_processes_time = datetime.now()
+
     processes = make_processes(
         width,
         height,
@@ -251,9 +231,7 @@ def make_videos(
         out_compare_filename,
         out_compare_mask_filename,
     )
-    # processes_time += (datetime.now() - start_processes_time).seconds * 10**6 + (
-    #     datetime.now() - start_processes_time
-    # ).microseconds
+
     future_array_len = max(
         max(int(parameters["fps_coef"] * fps), parameters["jump_delay_coef"]), 1
     )
@@ -268,23 +246,18 @@ def make_videos(
         input_compare_video.frames(),
         scene_detection_video.frames(),
     ):
-        # start_to_numpy_time = datetime.now()
+
         image = frame_to_numpy(cur_image)
-        # to_numpy_time += (datetime.now() - start_to_numpy_time).seconds * 10**6 + (
-        #     datetime.now() - start_to_numpy_time
-        # ).microseconds
+
         make_mask_start_time = datetime.now()
         image_mask = make_mask(image, net)
         make_mask_time += (datetime.now() - make_mask_start_time).seconds * 10**6 + (
             datetime.now() - make_mask_start_time
         ).microseconds
-        # start_to_numpy_time = datetime.now()
+
         np_moving_vector = np.array(
             [np.array(cur_col) for cur_col in cur_moving_vector]
         )
-        # to_numpy_time += (datetime.now() - start_to_numpy_time).seconds * 10**6 + (
-        #     datetime.now() - start_to_numpy_time
-        # ).microseconds
 
         if it < future_array_len:
             future_array[it] = {
@@ -297,7 +270,7 @@ def make_videos(
             }
             it += 1
             continue
-        # start_future_time = datetime.now()
+
         jump_flag, scene_flag, move_flag, future_flag = set_jump_flag(
             it - future_array_len + global_id,
             future_array,
@@ -310,9 +283,7 @@ def make_videos(
             image_len,
             future_array_len,
         )
-        # future_time += (datetime.now() - start_future_time).seconds * 10**6 + (
-        #     datetime.now() - start_future_time
-        # ).microseconds
+
         updated_parameters = deepcopy(parameters)
         if jump_flag is False:
             updated_parameters["jump_coef_wrap_size"] = max(len(image), len(image[0]))
@@ -334,7 +305,6 @@ def make_videos(
             updated_parameters["future_speed_coef"] = 0
             future_speed = 0
         else:
-            # start_future_time = datetime.now()
             future_speed, _, _, _ = speed(
                 it + global_id,
                 image_mask,
@@ -342,15 +312,13 @@ def make_videos(
                 np_moving_vector,
                 parameters,
             )
-            # future_time += (datetime.now() - start_future_time).seconds * 10**6 + (
-            #     datetime.now() - start_future_time
-            # ).microseconds
         if (
             future_array[it % future_array_len]["scene_flag"]
             and scene_flag
             and parameters["scene_detection_flag"]
             and it > changed_flag - (future_array_len - parameters["jump_delay_coef"])
         ) or it < after_scene_changed:
+            # Фиксируем положение окна обрезки на некоторое время после смены сцены
             if it > after_scene_changed:
                 after_scene_changed = it + max(parameters["jump_delay_coef"] - 1, 0)
             mask = future_array[after_scene_changed % future_array_len]["image_mask"]
@@ -362,7 +330,6 @@ def make_videos(
                 - (it - future_array_len + global_id)
             )
 
-        # start_crop_time = datetime.now()
         img, mask = crop(
             it - future_array_len + global_id + add,
             future_array[it % future_array_len]["image"],
@@ -376,11 +343,7 @@ def make_videos(
             updated_parameters,
         )
         add = 0
-        # crop_function_time += (datetime.now() - start_crop_time).seconds * 10**6 + (
-        #     datetime.now() - start_crop_time
-        # ).microseconds
 
-        # start_processes_time = datetime.now()
         set_processes(
             img,
             mask,
@@ -404,13 +367,11 @@ def make_videos(
             "scene_flag": cur_scene.props["_SceneChangePrev"]
             and parameters["scene_detection_flag"],
         }
-        # processes_time += (datetime.now() - start_processes_time).microseconds
 
         it += 1
 
     for i in range(future_array_len):
         scene_flag = True
-        # start_future_time = datetime.now()
         jump_flag, scene_flag, move_flag, future_flag = set_jump_flag(
             it - future_array_len + global_id,
             future_array,
@@ -423,9 +384,6 @@ def make_videos(
             image_len,
             future_array_len - i,
         )
-        # future_time += (datetime.now() - start_future_time).seconds * 10**6 + (
-        #     datetime.now() - start_future_time
-        # ).microseconds
         updated_parameters = deepcopy(parameters)
         if jump_flag is False:
             updated_parameters["jump_coef_wrap_size"] = max(len(image), len(image[0]))
@@ -437,7 +395,6 @@ def make_videos(
             updated_parameters["future_speed_coef"] = 0
             updated_parameters["prev_speed_coef"] = 0
 
-        # start_crop_time = datetime.now()
         img, mask = crop(
             it - future_array_len + global_id,
             future_array[it % future_array_len]["image"],
@@ -450,11 +407,6 @@ def make_videos(
             future_array[it % future_array_len]["scene_flag"] and scene_flag,
             updated_parameters,
         )
-        # crop_function_time += (datetime.now() - start_crop_time).seconds * 10**6 + (
-        #     datetime.now() - start_crop_time
-        # ).microseconds
-
-        # start_processes_time = datetime.now()
         set_processes(
             img,
             mask,
@@ -470,19 +422,8 @@ def make_videos(
             out_compare_mask_filename,
         )
         it += 1
-        # processes_time += (datetime.now() - start_processes_time).microseconds
     global_id += it - future_array_len
-    # print(
-    #     "Iteration :",
-    #     it - future_array_len,
-    # )
-    # print("All work :", (datetime.now() - whole_time).total_seconds())
-    print(f"make_mask : {make_mask_time / 10**6}")
-    print(f"make_mask_ones : {make_mask_time / 10**6 / (it-future_array_len)}")
-    # print(f"crop_function : {crop_function_time / 10**6}")
-    # print(f"processes : {processes_time / 10**6}")
-    # print(f"future : {future_time / 10**6}")
-    # print(f"numpy_time : {to_numpy_time / 10**6}")
+
     for process in processes.values():
         process.stdin.close()
 
